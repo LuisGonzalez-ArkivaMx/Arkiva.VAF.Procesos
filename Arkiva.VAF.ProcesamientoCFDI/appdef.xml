@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<application
+			type="server-application"
+			xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xsi:noNamespaceSchemaLocation="http://www.m-files.com/schemas/appdef-server-v1.xsd">
+  <guid>59535769-3cc5-48d9-b525-689dcd4074d2</guid>
+  <name>Arkiva.VAF.Procesos</name>
+  <description></description>
+  <publisher></publisher>
+  <version>0.1</version>
+  <copyright></copyright>
+  <extension-objects>
+    <extension-object>
+      <name>Arkiva.VAF.ProcesamientoCFDI</name>
+      <assembly>Arkiva.VAF.ProcesamientoCFDI.dll</assembly>
+      <class>Arkiva.VAF.ProcesamientoCFDI.VaultApplication</class>
+      <installation-method>Install</installation-method>
+      <uninstallation-method>Uninstall</uninstallation-method>
+      <initialization-method>Initialize</initialization-method>
+      <uninitialization-method>Uninitialize</uninitialization-method>
+      <start-operations-method>StartOperations</start-operations-method>
+    </extension-object>
+  </extension-objects>
+</application>
