@@ -22,35 +22,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
     public class VaultApplication
         : ConfigurableVaultApplicationBase<Configuration>
     {
-        //[EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaDeCfdi")]
-        //public void IniciaRecorridoProcesamientoCFDI(EventHandlerEnvironment env)
-        //{
-        //    var wf_FlujoValidaciones = PermanentVault
-        //        .WorkflowOperations
-        //        .GetWorkflowIDByAlias("WF.FlujoProcesamientoDeDocumentos");
-
-        //    var wfs_EstadoPorValidar = PermanentVault
-        //        .WorkflowOperations
-        //        .GetWorkflowStateIDByAlias("WFS.FlujoDeProcesamientoDeDocumentos.PorValidar");
-
-        //    try
-        //    {
-        //        var oWorkflowstate = new ObjectVersionWorkflowState();
-        //        var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
-
-        //        oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_FlujoValidaciones);
-        //        oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_EstadoPorValidar);
-        //        env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        SysUtils.ReportErrorMessageToEventLog("Error en ProcesamientoCFDI...", ex);
-        //    }
-        //}
-
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaDeCfdi")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaMasivaDeCfdi")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.CargaMasivaDeCfdi")]
         public void ProcesarMetadataCFDIYCrearClaseCFDINomina(EventHandlerEnvironment env)
         {
             var filesToDelete = new List<string>();
@@ -395,7 +367,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 if (sRfcEmisorValue != "" && sNombreValue != "")
                 {
                     // Si existe Rfc/Nombre, se busca Rfc en Organizacion, si no existe se crea y vincula al comprobante
-                    if (GetExistingRfc(env, cl_Proveedor, pd_RfcEmpresa, sRfcEmisorValue) == false)
+                    if (GetExistingRfc(env, ot_Proveedor, pd_RfcEmpresa, sRfcEmisorValue) == false)
                     {
                         CreateRfcObject(env, ot_Proveedor, cl_Proveedor, pd_RfcEmpresa, sRfcEmisorValue, sNombreValue);
                     }
@@ -415,7 +387,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                 if (sRfcReceptorValue != "" && sNombreValue != "")
                 {
-                    if (GetExistingRfc(env, cl_EmpresaInterna, pd_RfcEmpresa, sRfcReceptorValue) == false)
+                    if (GetExistingRfc(env, ot_EmpresaInterna, pd_RfcEmpresa, sRfcReceptorValue) == false)
                     {
                         CreateRfcObject(env, ot_EmpresaInterna, cl_EmpresaInterna, pd_RfcEmpresa, sRfcReceptorValue, sNombreValue);
                     }
@@ -438,7 +410,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 // Obtener el objeto proveedor
                 var searchBuilderProveedor = new MFSearchBuilder(env.Vault);
                 searchBuilderProveedor.Deleted(false); // No eliminados
-                searchBuilderProveedor.Class(cl_Proveedor);
+                searchBuilderProveedor.ObjType(ot_Proveedor);
                 searchBuilderProveedor.Property(pd_RfcEmpresa, MFDataType.MFDatatypeText, sRfcEmisorValue);
 
                 var searchResultsProveedor = searchBuilderProveedor.FindEx();
@@ -477,7 +449,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                 if (sRfcReceptorValue != "" && sNombreValue != "")
                 {
-                    if (GetExistingRfc(env, cl_Cliente, pd_RfcEmpresa, sRfcReceptorValue) == false)
+                    if (GetExistingRfc(env, ot_Cliente, pd_RfcEmpresa, sRfcReceptorValue) == false)
                     {
                         CreateRfcObject(env, ot_Cliente, cl_Cliente, pd_RfcEmpresa, sRfcReceptorValue, sNombreValue);
                     }
@@ -495,7 +467,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                 if (sRfcEmisorValue != "" && sNombreValue != "")
                 {
-                    if (GetExistingRfc(env, cl_EmpresaInterna, pd_RfcEmpresa, sRfcEmisorValue) == false)
+                    if (GetExistingRfc(env, ot_EmpresaInterna, pd_RfcEmpresa, sRfcEmisorValue) == false)
                     {
                         CreateRfcObject(env, ot_EmpresaInterna, cl_EmpresaInterna, pd_RfcEmpresa, sRfcEmisorValue, sNombreValue);
                     }
@@ -753,7 +725,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                     var searchBuilderProveedor = new MFSearchBuilder(env.Vault);
                     searchBuilderProveedor.Deleted(false); // No eliminados
-                    searchBuilderProveedor.Class(cl_Proveedor);
+                    searchBuilderProveedor.ObjType(ot_Proveedor);
                     searchBuilderProveedor.Property(pd_RfcEmpresa, MFDataType.MFDatatypeText, sRfcProveedor);
 
                     var searchResultsProveedor = searchBuilderProveedor.FindEx();
@@ -784,7 +756,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                         oLookupsEmpresaInternaIssue.Add(-1, oLookup);
                     }
-
+                    
                     // Crear el issue
                     CreateIssue(env, oLookupsProveedorIssue, oLookupsEmpresaInternaIssue, oLookupsDocumentos, nombreOTitulo, sDescripcion);
 
@@ -806,12 +778,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
         }
 
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.OrdenDeCompraEmitidaProveedor")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.OrdenDeCompraRecibidaCliente")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.FacturaRecibidaProveedor")]
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.OrdenDeCompraEmitidaProveedor")]
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.OrdenDeCompraRecibidaCliente")]
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.FacturaRecibidaProveedor")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.Contrato")]
         public void ProcesosOrdenesDeCompra(EventHandlerEnvironment env)
         {
             var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
@@ -830,6 +800,8 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             var pd_ContratosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.RelatedContract");
             var pd_ContratosRelacionadosSE = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.ContratosRelacionados");
             var pd_FacturasRelacionadasRecibidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.FacturasRelacionadasRecibidas");
+            var pd_OrdenesCompraEmitidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraEmitidas");
+            var pd_EsConvenioModificatorio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EsConvenioModificatorio");
             var pd_Class = env.Vault.PropertyDefOperations.GetBuiltInPropertyDef(MFBuiltInPropertyDef.MFBuiltInPropertyDefClass);
 
             var oPropertyValues = new PropertyValues();
@@ -849,6 +821,9 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                 // Relacionar a contratos relacionados
                 SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor, true);
+
+                // Relacionar a facturas recibidas
+                SetPropertiesGenerico(env, cl_FacturaRecibidaProveedor, pd_Proveedor, pd_FacturasRelacionadasRecibidas, oLookupsProveedor);
             }
 
             if (cl_OrdenCompraRecibidaCliente == iClase)
@@ -869,8 +844,36 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             {
                 var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
 
+                // Relacionar a ordenes de compra emitidas
+                SetPropertiesGenerico(env, cl_OrdenCompraEmitidaProveedor, pd_Proveedor, pd_OrdenesCompraEmitidas, oLookupsProveedor);
+
                 // Relacionar a contratos relacionados
                 SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor, true);
+            }
+
+            if (cl_Contrato == iClase)
+            {
+                var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
+
+                // Relacionar a entregables recibidos
+                SetPropertiesGenerico(env, cl_EntregableRecibidoProveedor, pd_Proveedor, pd_EntregablesRecibidos, oLookupsProveedor);
+
+                // Si el contrato es un convenio modificatorio, relacionar ordenes de compra emitidas y facturas recibidas
+                if (!oPropertyValues.SearchForPropertyEx(pd_EsConvenioModificatorio, true).TypedValue.IsNULL() &&
+                    Convert.ToBoolean(oPropertyValues.SearchForPropertyEx(pd_EsConvenioModificatorio, true).TypedValue.Value) == true)
+                {
+                    // Relacionar a ordenes de compra emitidas
+                    SetPropertiesGenerico(env, cl_OrdenCompraEmitidaProveedor, pd_Proveedor, pd_OrdenesCompraEmitidas, oLookupsProveedor);
+
+                    // Relacionar a facturas recibidas
+                    SetPropertiesGenerico(env, cl_FacturaRecibidaProveedor, pd_Proveedor, pd_FacturasRelacionadasRecibidas, oLookupsProveedor);
+                }
+
+                // Relacionar a proyectos relacionados
+                SetPropertiesGenerico(env, cl_ProyectoServicioEspecializado, pd_Proveedor, pd_ProyectosRelacionados, oLookupsProveedor);
+
+                // Actualizar estatus de flujo de excepciones en el proveedor relacionado
+                UpdateEstatusDeFirmaFlujoExcepcionesProveedor(env);
             }
         }
 
@@ -878,7 +881,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.EntregableEmitidoCliente")]
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.EntregableRecibidoProveedor")]
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.EntregableEmitidoCliente")]
-        public void ProcesosEntregable(EventHandlerEnvironment env)
+        public void ProcesosDocumentoEntregable(EventHandlerEnvironment env)
         {
             var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
             var cl_OrdenCompraRecibidaCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraRecibidaCliente");
@@ -930,33 +933,592 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
         }
 
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.ProyectoServicioEspecializado")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "MF.CL.Project")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.Contrato")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProyectoServicioEspecializado")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "MF.CL.Project")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.Contrato")]
-        public void ProcesosProyectosContratos(EventHandlerEnvironment env)
+        //[EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.ProyectoServicioEspecializado")]
+        //[EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "MF.CL.Project")]        
+        //[EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProyectoServicioEspecializado")]
+        //[EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "MF.CL.Project")]        
+        //public void ProcesosProyecto(EventHandlerEnvironment env)
+        //{
+        //    var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
+        //    var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
+        //    var cl_OrdenCompraRecibidaCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraRecibidaCliente");
+        //    var cl_EntregableRecibidoProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.EntregableRecibidoProveedor");
+        //    var cl_EntregableEmitidoCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.EntregableEmitidoCliente");
+        //    var cl_ProyectoServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.ProyectoServicioEspecializado");
+        //    var cl_ProyectoCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("MF.CL.Project");
+        //    var cl_Contrato = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Contrato");
+        //    var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+        //    var pd_EmpresaInterna = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EmpresaInterna");
+        //    var pd_OrdenesCompraEmitidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraEmitidas");
+        //    var pd_OrdenesCompraRecibidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraRecibidas");
+        //    var pd_EntregablesRecibidos = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EntregablesRecibidos");
+        //    var pd_EntregablesEmitidos = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EntregablesEmitidos");
+        //    var pd_ProyectosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Project");
+        //    var pd_ContratosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.RelatedContract");
+        //    var pd_ContratosRelacionadosSE = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.ContratosRelacionados");
+        //    var pd_EsConvenioModificatorio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EsConvenioModificatorio");
+        //    var pd_FacturasRelacionadasRecibidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.FacturasRelacionadasRecibidas");
+        //    var pd_Class = env.Vault.PropertyDefOperations.GetBuiltInPropertyDef(MFBuiltInPropertyDef.MFBuiltInPropertyDefClass);
+
+        //    var oPropertyValues = new PropertyValues();
+        //    oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+        //    var iClase = oPropertyValues.SearchForPropertyEx(pd_Class.ID, true).TypedValue.GetLookupID();
+
+        //    if (cl_ProyectoServicioEspecializado == iClase)
+        //    {
+        //        var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
+
+        //        // Relacionar a entregables recibidos
+        //        SetPropertiesGenerico(env, cl_EntregableRecibidoProveedor, pd_Proveedor, pd_EntregablesRecibidos, oLookupsProveedor, false);
+
+        //        // Relacionar a ordenes de compra emitidas
+        //        SetPropertiesGenerico(env, cl_OrdenCompraEmitidaProveedor, pd_Proveedor, pd_OrdenesCompraEmitidas, oLookupsProveedor, false);
+
+        //        // Relacionar a contratos relacionados
+        //        SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor, false);
+
+        //        // Actualizar estatus de flujo de excepciones en el proveedor relacionado
+        //        UpdateEstatusDeFirmaFlujoExcepcionesProveedor(env);
+        //    }
+
+        //    if (cl_ProyectoCliente == iClase)
+        //    {
+        //        var oLookupsEmpresaInterna = oPropertyValues.SearchForPropertyEx(pd_EmpresaInterna, true).TypedValue.GetValueAsLookups();
+
+        //        // Relacionar a entregables emitidos
+        //        SetPropertiesGenerico(env, cl_EntregableEmitidoCliente, pd_EmpresaInterna, pd_EntregablesEmitidos, oLookupsEmpresaInterna, false);
+
+        //        // Relacionar a ordenes de compra recibidas
+        //        SetPropertiesGenerico(env, cl_OrdenCompraRecibidaCliente, pd_EmpresaInterna, pd_OrdenesCompraRecibidas, oLookupsEmpresaInterna, false);
+
+        //        // Relacionar a contratos relacionados
+        //        SetPropertiesGenerico(env, cl_Contrato, pd_EmpresaInterna, pd_ContratosRelacionados, oLookupsEmpresaInterna, false);
+        //    }           
+        //}        
+
+        //[EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]        
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
+        public void ProcesosCreacionMasivaProveedores(EventHandlerEnvironment env)
         {
+            bool bProcesoExitoso = false;
+            string sPathExcelFile = "";
+
+            // Inicializar objetos, propiedades, etc.
+            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
+            var pd_CrearListadoProveedores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.CrearListadoDeProveedores");
+            var pd_EstadoListadoProveedores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoListadoProveedores");
+            var pd_RfcEmpresa = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
+            var pd_EstadoProcesamiento = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
+            var oPropertyValues = new PropertyValues();
+
+            // Archivos que se deberan limpiar al final del proceso
+            var filesToDelete = new List<string>();
+            
+            try
+            {
+                oPropertyValues = env.ObjVerEx.Properties;
+
+                ////////////////////////////////////////////////////////////////
+                ////////// Proceso Crear Listado de Proveedores ///////////////
+                //////////////////////////////////////////////////////////////     
+
+                // Si la propiedad crear listado de proveedores es true, generar el archivo excel
+                if (!oPropertyValues.SearchForPropertyEx(pd_CrearListadoProveedores, true).TypedValue.IsNULL() &&
+                    Convert.ToBoolean(oPropertyValues.SearchForPropertyEx(pd_CrearListadoProveedores, true).TypedValue.Value) == true)
+                {
+                    // Verificar estado de listado de proveedores
+                    if (oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() || 
+                        oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 1 || 
+                        oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 4)
+                    {
+                        // Subdirectorio temporal
+                        string sTempTempPath = @"C:\temp\temp\";
+
+                        if (!Directory.Exists(sTempTempPath))
+                            Directory.CreateDirectory(sTempTempPath);
+
+                        string[] files = Directory.GetFiles(sTempTempPath, "*.xlsx");
+
+                        if (files.Length == 0)
+                        {
+                            // Abrir la plantilla del listado de proveedores
+                            Application oExcelFile = new Application();
+                            Workbook wb = oExcelFile.Workbooks.Open(@"C:\temp\ListadoDeProveedores.xlsx");
+                            Worksheet ws1 = wb.Sheets[1];
+                            ws1.Activate();
+
+                            // Obtener todos los proveedores existentes en la boveda
+                            var searchBuilderProveedor = new MFSearchBuilder(env.Vault);
+                            searchBuilderProveedor.Deleted(false);
+                            searchBuilderProveedor.ObjType(ot_Proveedor);
+
+                            var searchResultsProveedor = searchBuilderProveedor.FindEx();
+
+                            foreach (var proveedor in searchResultsProveedor)
+                            {
+                                var oPropertyValuesProveedor = proveedor.Properties;
+
+                                var sNombreOTituloProveedor = oPropertyValuesProveedor
+                                    .SearchForPropertyEx((int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle, true)
+                                    .TypedValue
+                                    .Value.ToString();
+
+                                var sRfcProveedor = oPropertyValuesProveedor.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.Value.ToString();
+
+                                // Obtener el row en el que se agregar la informacion del proveedor                           
+                                Range usedRange = ws1.UsedRange;
+                                int rowCount = usedRange.Rows.Count;
+                                int rowAdd = rowCount + 1;
+
+                                // Agregar los datos del proveedor a la plantilla
+                                ws1.Cells[rowAdd, 1] = sRfcProveedor;
+                                ws1.Cells[rowAdd, 2] = sNombreOTituloProveedor;
+
+                                // Liberar el rango actual para obtener el siguiente
+                                Marshal.ReleaseComObject(usedRange);
+                            }
+
+                            // Guardar el archivo excel despues de obtener la informacion de los proveedores dados de alta en la boveda
+                            string sNameExcelFile = string.Format("ListadoDeProveedores_{0:yyyyMMdd_HHmmss}", DateTime.Now);
+                            sPathExcelFile = Path.Combine(sTempTempPath, string.Concat(sNameExcelFile, ".xlsx"));
+                            filesToDelete.Add(sPathExcelFile);
+
+                            wb.SaveAs(sPathExcelFile);
+                            wb.Close(true, Type.Missing, Type.Missing);
+                            oExcelFile.Quit();
+
+                            // Limpiar objetos
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+
+                            // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema                        
+                            Marshal.ReleaseComObject(ws1);
+                            Marshal.ReleaseComObject(wb);
+                            Marshal.ReleaseComObject(oExcelFile);
+
+                            // Modificar el documento de carga masiva de empleados
+                            var oLookupCrearListado = new Lookup();
+                            var objIDCrearListado = new ObjID();
+
+                            objIDCrearListado.SetIDs
+                            (
+                                ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                                ID: env.ObjVerEx.ID
+                            );
+
+                            var oPropertyValueCrearListado = new PropertyValue
+                            {
+                                PropertyDef = pd_EstadoListadoProveedores
+                            };
+
+                            oLookupCrearListado.Item = 2;
+
+                            oPropertyValueCrearListado.TypedValue.SetValueToLookup(oLookupCrearListado);
+
+                            // Si el documento esta establecido como single file, modificar a multi file
+                            if (env.ObjVer.Type == (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument
+                                && env.Vault.ObjectOperations.IsSingleFileObject(env.ObjVer) == true)
+                            {
+                                env.Vault.ObjectOperations.SetSingleFileObject
+                                (
+                                    ObjVer: env.ObjVer,
+                                    SingleFile: false
+                                );
+                            }
+
+                            // Agregar el archivo al objeto
+                            env.Vault.ObjectFileOperations.AddFile(
+                                ObjVer: env.ObjVer,
+                                Title: sNameExcelFile,
+                                Extension: "xlsx",
+                                SourcePath: sPathExcelFile);
+
+                            // Actualizar estado de listado de proveedores
+                            env.Vault.ObjectPropertyOperations.SetProperty
+                            (
+                                ObjVer: env.ObjVer,
+                                PropertyValue: oPropertyValueCrearListado
+                            );
+                        }
+
+                        // Establecer el estatus "En Proceso" de la propiedad Estado de Procesamiento
+                        var oLookup = new Lookup();
+                        var oObjID = new ObjID();
+
+                        oObjID.SetIDs
+                        (
+                            ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                            ID: env.ObjVer.ID
+                        );
+
+                        var oPropertyValue = new PropertyValue
+                        {
+                            PropertyDef = pd_EstadoProcesamiento
+                        };
+
+                        oLookup.Item = 3;
+
+                        oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                        env.Vault.ObjectPropertyOperations.SetProperty
+                        (
+                            ObjVer: env.ObjVer,
+                            PropertyValue: oPropertyValue
+                        );
+
+                        SysUtils.ReportInfoToEventLog("Se genero el listado de proveedores");
+                    }
+
+                    if (!oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() && 
+                        oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 2)
+                    {
+                        var oObjVerEx = env.ObjVerEx;
+                        var oObjectFiles = oObjVerEx.Info.Files;
+                        IEnumerator enumerator = oObjectFiles.GetEnumerator();
+
+                        while (enumerator.MoveNext())
+                        {
+                            // Descargar el excel como un archivo temporal
+                            ObjectFile oFile = (ObjectFile)enumerator.Current;
+                            string sPathTempFile = SysUtils.GetTempFileName(".tmp");
+                            filesToDelete.Add(sPathTempFile);
+                            FileVer fileVer = oFile.FileVer;
+
+                            env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
+
+                            Application oExcelFile = new Application();
+                            Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
+
+                            // Leer Sheet1 del excel
+                            Worksheet ws1 = wb.Sheets[1];
+                            ws1.Activate();
+                            Range oRangeColumnsWS1 = ws1.UsedRange;
+
+                            int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
+
+                            for (int i = 3; i <= rowCountWS1; i++)
+                            {
+                                // Datos del proveedor
+                                string sRfcProveedor = "";
+                                string sNombreProveedor = "";
+                                string sTipoProveedor = "";
+                                string sTipoValidacionChecklist = "";
+                                string sTipoPersona = "";
+
+                                if (!(oRangeColumnsWS1.Cells[i, 1].Value2 is null))
+                                {
+                                    sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
+                                    sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
+                                    sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
+                                    sTipoValidacionChecklist = oRangeColumnsWS1.Cells[i, 4].Value2.ToString();
+                                    sTipoPersona = oRangeColumnsWS1.Cells[i, 5].Value2.ToString();
+                                    var sFechaInicioProveedor = oRangeColumnsWS1.Cells[i, 6].Value2;
+
+                                    // Crear o actualizar el proveedor
+                                    if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor, sTipoValidacionChecklist, sTipoPersona, sFechaInicioProveedor))
+                                    {
+                                        // Actualizar estado de listado de proveedores
+                                        var oLookupActualizar = new Lookup();
+                                        var oObjIDActualizar = new ObjID();
+
+                                        oObjIDActualizar.SetIDs
+                                        (
+                                            ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                                            ID: env.ObjVer.ID
+                                        );
+
+                                        var oPropertyValueActualizar = new PropertyValue
+                                        {
+                                            PropertyDef = pd_EstadoListadoProveedores
+                                        };
+
+                                        oLookupActualizar.Item = 3;
+
+                                        oPropertyValueActualizar.TypedValue.SetValueToLookup(oLookupActualizar);
+
+                                        env.Vault.ObjectPropertyOperations.SetProperty
+                                        (
+                                            ObjVer: env.ObjVer,
+                                            PropertyValue: oPropertyValueActualizar
+                                        );
+
+                                        SysUtils.ReportInfoToEventLog("Proveedores actualizados exitosamente");
+
+                                        if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
+                                        {
+                                            SysUtils.ReportInfoToEventLog("Se relacionaron contactos externos al proveedor");
+                                        }
+                                    }
+                                }                                
+                            }
+
+                            // Limpiar objetos
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+
+                            // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
+                            Marshal.ReleaseComObject(oRangeColumnsWS1);
+                            Marshal.ReleaseComObject(ws1);
+
+                            // Cerrar y liberar
+                            wb.Close();
+                            Marshal.ReleaseComObject(wb);
+
+                            // Quitar y liberar
+                            oExcelFile.Quit();
+                            Marshal.ReleaseComObject(oExcelFile);
+                        }
+
+                        // Establecer el estatus "Documento Procesado" de la propiedad Estado de Procesamiento
+                        var oLookup = new Lookup();
+                        var oObjID = new ObjID();
+
+                        oObjID.SetIDs
+                        (
+                            ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                            ID: env.ObjVer.ID
+                        );
+
+                        var oPropertyValue = new PropertyValue
+                        {
+                            PropertyDef = pd_EstadoProcesamiento
+                        };
+
+                        oLookup.Item = 1;
+
+                        oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                        env.Vault.ObjectPropertyOperations.SetProperty
+                        (
+                            ObjVer: env.ObjVer,
+                            PropertyValue: oPropertyValue
+                        );
+                    }
+                }
+                else
+                {
+                    ////////////////////////////////////////////////////////////////
+                    ///////// Proceso Creacion Masiva de Proveedores //////////////
+                    ////////////////////////////////////////////////////////////// 
+
+                    SysUtils.ReportInfoToEventLog("Inicia proceso de creacion masiva de proveedores");
+
+                    var oObjVerEx = env.ObjVerEx;
+                    var oObjectFiles = oObjVerEx.Info.Files;
+                    IEnumerator enumerator = oObjectFiles.GetEnumerator();
+
+                    while (enumerator.MoveNext())
+                    {
+                        // Descargar el excel como un archivo temporal
+                        ObjectFile oFile = (ObjectFile)enumerator.Current;
+                        string sPathTempFile = SysUtils.GetTempFileName(".tmp");
+                        //filesToDelete.Add(sPathTempFile);
+                        FileVer fileVer = oFile.FileVer;
+
+                        env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
+
+                        SysUtils.ReportInfoToEventLog("Ruta de descarga del archivo temporal: " + sPathTempFile);
+
+                        Application oExcelFile = new Application();
+                        Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
+
+                        // Leer Sheet1 del excel
+                        Worksheet ws1 = wb.Sheets[1];
+                        ws1.Activate();
+                        Range oRangeColumnsWS1 = ws1.UsedRange;
+
+                        int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
+
+                        // Leer Sheet2 del excel
+                        Worksheet ws2 = wb.Sheets[2];
+                        ws2.Activate();
+                        Range oRangeColumnsWS2 = ws2.UsedRange;
+
+                        int rowCountWS2 = oRangeColumnsWS2.Rows.Count;
+
+                        for (int ii = 2; ii <= rowCountWS2; ii++)
+                        {
+                            // Datos del contacto externo administrador
+                            string sRfcProveedor = "";
+                            string sNombre = "";
+                            string sApellidoPaterno = "";
+                            string sApellidoMaterno = "";
+                            string sCurp = "";
+                            string sEmail = "";
+
+                            sRfcProveedor = oRangeColumnsWS2.Cells[ii, 1].Value2.ToString();
+                            sNombre = oRangeColumnsWS2.Cells[ii, 2].Value2.ToString();
+                            sApellidoPaterno = oRangeColumnsWS2.Cells[ii, 3].Value2.ToString();
+                            sApellidoMaterno = oRangeColumnsWS2.Cells[ii, 4].Value2.ToString();
+                            sCurp = oRangeColumnsWS2.Cells[ii, 5].Value2.ToString();
+                            sEmail = oRangeColumnsWS2.Cells[ii, 6].Value2.ToString();
+
+                            SysUtils.ReportInfoToEventLog("RFC del proveedor: " + sRfcProveedor);
+
+                            // Crear o actualizar contacto externo administrador del proveedor
+                            if (CreateOrUpdateContactoExternoAdmin(env, sRfcProveedor, sNombre, sApellidoPaterno, sApellidoMaterno, sCurp, sEmail))
+                            {
+                                bProcesoExitoso = true;
+                            }
+                        }
+
+                        for (int i = 3; i <= rowCountWS1; i++)
+                        {
+                            // Datos del proveedor
+                            string sRfcProveedor = "";
+                            string sNombreProveedor = "";
+                            string sTipoProveedor = "";
+                            string sTipoValidacionChecklist = "";
+                            string sTipoPersona = "";
+
+                            if (!(oRangeColumnsWS1.Cells[i, 1].Value2 is null))
+                            {
+                                SysUtils.ReportInfoToEventLog("La celda no es nula");
+
+                                sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
+                                sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
+                                sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
+                                sTipoValidacionChecklist = oRangeColumnsWS1.Cells[i, 4].Value2.ToString();
+                                sTipoPersona = oRangeColumnsWS1.Cells[i, 5].Value2.ToString();
+                                var sFechaInicioProveedor = oRangeColumnsWS1.Cells[i, 6].Value2;
+
+                                // Crear o actualizar el proveedor
+                                if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor, sTipoValidacionChecklist, sTipoPersona, sFechaInicioProveedor))
+                                {
+                                    if (bProcesoExitoso)
+                                    {
+                                        if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
+                                        {
+                                            SysUtils.ReportInfoToEventLog("Los proveedores fueron creados exitosamente");
+                                        }
+                                    }
+                                }
+                            }                            
+                        }
+
+                        // Limpiar objetos
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+
+                        // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
+                        Marshal.ReleaseComObject(oRangeColumnsWS1);
+                        Marshal.ReleaseComObject(ws1);
+                        Marshal.ReleaseComObject(oRangeColumnsWS2);
+                        Marshal.ReleaseComObject(ws2);
+
+                        // Cerrar y liberar
+                        wb.Close();
+                        Marshal.ReleaseComObject(wb);
+
+                        // Quitar y liberar
+                        oExcelFile.Quit();
+                        Marshal.ReleaseComObject(oExcelFile);
+                    }
+
+                    // Establecer el estatus "Documento Procesado" de la propiedad Estado de Procesamiento
+                    var oLookup = new Lookup();
+                    var oObjID = new ObjID();
+
+                    oObjID.SetIDs
+                    (
+                        ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                        ID: env.ObjVer.ID
+                    );
+
+                    var oPropertyValue = new PropertyValue
+                    {
+                        PropertyDef = pd_EstadoProcesamiento
+                    };
+
+                    oLookup.Item = 1;
+
+                    oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                    env.Vault.ObjectPropertyOperations.SetProperty
+                    (
+                        ObjVer: env.ObjVer,
+                        PropertyValue: oPropertyValue
+                    );
+                }  
+            }
+            catch (Exception ex)
+            {
+                // Establecer el estatus "No Procesado (Error)" de la propiedad Estado de Procesamiento
+                var oLookup = new Lookup();
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_EstadoProcesamiento
+                };
+
+                oLookup.Item = 2;
+
+                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+
+                // Cerrar objetos abiertos de Interop Excel
+
+
+                SysUtils.ReportErrorMessageToEventLog("Error en proceso de creacion masiva de proveedores... ", ex);
+            }
+            finally
+            {
+                foreach (var sFile in filesToDelete)
+                {
+                    File.Delete(sFile);
+                }
+            }
+        }
+
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.OrdenDeCompraEmitidaProveedor")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.OrdenDeCompraRecibidaCliente")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.FacturaRecibidaProveedor")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.Contrato")]
+        public void ProcesosDocumentosAdministrativos(EventHandlerEnvironment env)
+        {
+            var wf_ValidacionesChecklist = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidcionesRepse");
+            var wfs_DocumentoPorTraducir = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesChecklist.DocumentoPorTraducir");
+            var wf_CicloVidaContrato = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("MF.WF.ContractLifecycle");
+            var wfs_PresentacionPendiente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("M-Files.CLM.State.ContractLifecycle.PendingSubmission");
+            var wf_FlujoExcepcionesProveedor = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.FlujoDeExcepcionesProveedor");
+            var wfs_EstadoSolicitarFirma = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.FlujoDeExcepcionesProveedor.SolicitarFirma");
+            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
+            var cl_ProveedorServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.ProveedorDeServicioEspecializado");
             var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
-            var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
             var cl_OrdenCompraRecibidaCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraRecibidaCliente");
+            var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
             var cl_EntregableRecibidoProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.EntregableRecibidoProveedor");
             var cl_EntregableEmitidoCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.EntregableEmitidoCliente");
             var cl_ProyectoServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.ProyectoServicioEspecializado");
             var cl_ProyectoCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("MF.CL.Project");
             var cl_Contrato = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Contrato");
-            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
             var pd_EmpresaInterna = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EmpresaInterna");
-            var pd_OrdenesCompraEmitidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraEmitidas");
-            var pd_OrdenesCompraRecibidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraRecibidas");
             var pd_EntregablesRecibidos = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EntregablesRecibidos");
             var pd_EntregablesEmitidos = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EntregablesEmitidos");
             var pd_ProyectosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Project");
             var pd_ContratosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.RelatedContract");
             var pd_ContratosRelacionadosSE = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.ContratosRelacionados");
-            var pd_EsConvenioModificatorio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EsConvenioModificatorio");
             var pd_FacturasRelacionadasRecibidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.FacturasRelacionadasRecibidas");
+            var pd_RfcEmpresa = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
+            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+            var pd_Severidad = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Severity");
+            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
+            var pd_OrdenesCompraEmitidas = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.OrdenesDeCompraEmitidas");
+            var pd_EsConvenioModificatorio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EsConvenioModificatorio");
             var pd_Class = env.Vault.PropertyDefOperations.GetBuiltInPropertyDef(MFBuiltInPropertyDef.MFBuiltInPropertyDefClass);
 
             var oPropertyValues = new PropertyValues();
@@ -964,35 +1526,46 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
             var iClase = oPropertyValues.SearchForPropertyEx(pd_Class.ID, true).TypedValue.GetLookupID();
 
-            if (cl_ProyectoServicioEspecializado == iClase)
+            if (cl_OrdenCompraEmitidaProveedor == iClase)
             {
                 var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
 
                 // Relacionar a entregables recibidos
                 SetPropertiesGenerico(env, cl_EntregableRecibidoProveedor, pd_Proveedor, pd_EntregablesRecibidos, oLookupsProveedor);
 
-                // Relacionar a ordenes de compra emitidas
-                SetPropertiesGenerico(env, cl_OrdenCompraEmitidaProveedor, pd_Proveedor, pd_OrdenesCompraEmitidas, oLookupsProveedor);
+                // Relacionar a proyectos relacionados
+                SetPropertiesGenerico(env, cl_ProyectoServicioEspecializado, pd_Proveedor, pd_ProyectosRelacionados, oLookupsProveedor);
 
                 // Relacionar a contratos relacionados
-                SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor);
-
-                // Actualizar estatus de flujo de excepciones en el proveedor relacionado
-                UpdateEstatusDeFirmaFlujoExcepcionesProveedor(env);
+                SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor, true);
+                
+                // Relacionar a facturas recibidas
+                SetPropertiesGenerico(env, cl_FacturaRecibidaProveedor, pd_Proveedor, pd_FacturasRelacionadasRecibidas, oLookupsProveedor);
             }
 
-            if (cl_ProyectoCliente == iClase)
+            if (cl_OrdenCompraRecibidaCliente == iClase)
             {
                 var oLookupsEmpresaInterna = oPropertyValues.SearchForPropertyEx(pd_EmpresaInterna, true).TypedValue.GetValueAsLookups();
 
                 // Relacionar a entregables emitidos
                 SetPropertiesGenerico(env, cl_EntregableEmitidoCliente, pd_EmpresaInterna, pd_EntregablesEmitidos, oLookupsEmpresaInterna);
 
-                // Relacionar a ordenes de compra recibidas
-                SetPropertiesGenerico(env, cl_OrdenCompraRecibidaCliente, pd_EmpresaInterna, pd_OrdenesCompraRecibidas, oLookupsEmpresaInterna);
+                // Relacionar a proyectos relacionados
+                SetPropertiesGenerico(env, cl_ProyectoCliente, pd_EmpresaInterna, pd_ProyectosRelacionados, oLookupsEmpresaInterna);
 
                 // Relacionar a contratos relacionados
-                SetPropertiesGenerico(env, cl_Contrato, pd_EmpresaInterna, pd_ContratosRelacionados, oLookupsEmpresaInterna);
+                SetPropertiesGenerico(env, cl_Contrato, pd_EmpresaInterna, pd_ContratosRelacionadosSE, oLookupsEmpresaInterna);
+            }
+
+            if (cl_FacturaRecibidaProveedor == iClase)
+            {
+                var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
+
+                // Relacionar a ordenes de compra emitidas
+                SetPropertiesGenerico(env, cl_OrdenCompraEmitidaProveedor, pd_Proveedor, pd_OrdenesCompraEmitidas, oLookupsProveedor);
+
+                // Relacionar a contratos relacionados
+                SetPropertiesGenerico(env, cl_Contrato, pd_Proveedor, pd_ContratosRelacionados, oLookupsProveedor, true);
             }
 
             if (cl_Contrato == iClase)
@@ -1015,9 +1588,454 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                 // Relacionar a proyectos relacionados
                 SetPropertiesGenerico(env, cl_ProyectoServicioEspecializado, pd_Proveedor, pd_ProyectosRelacionados, oLookupsProveedor);
+            }
 
-                // Actualizar estatus de flujo de excepciones en el proveedor relacionado
+            if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase || cl_Contrato == iClase)
+            {
+                var oWorkflowstate = new ObjectVersionWorkflowState();
+                var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                // Verificar estatus de la firma del flujo de excepciones
                 UpdateEstatusDeFirmaFlujoExcepcionesProveedor(env);
+
+                //var sRfcProveedor = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.Value.ToString();
+                if (!oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.IsNULL())
+                {
+                    var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
+                    var objVerProveedor = oListProveedor[0];
+
+                    var oPropertyValuesProveedor = new PropertyValues();                    
+                    oPropertyValuesProveedor = objVerProveedor.Properties;                                       
+
+                    var iIdSeveridad = oPropertyValuesProveedor.SearchForPropertyEx(pd_Severidad, true).TypedValue.GetLookupID();
+
+                    if (iIdSeveridad == 3 || iIdSeveridad == 4)
+                    {
+                        // Verificar si el proveedor con severidad rojo o naranja ya tiene la firma para asociar documentos
+                        if (oPropertyValuesProveedor.IndexOf(pd_EstatusFlujoExcepciones) != -1)
+                        {
+                            var iEstatusFlujoExcepciones = oPropertyValuesProveedor.SearchForPropertyEx(pd_EstatusFlujoExcepciones, true).TypedValue.GetLookupID();                            
+
+                            // Si el estatus es diferente Firmado se ingresa el documento al flujo de excepciones
+                            if (iEstatusFlujoExcepciones != 2)
+                            {
+                                // Asignar flujo de excepciones para solicitar firma a director                                
+                                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_FlujoExcepcionesProveedor);
+                                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_EstadoSolicitarFirma);
+                                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+
+                                // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
+                                var oLookup = new Lookup();
+                                var oObjID = new ObjID();
+
+                                oObjID.SetIDs
+                                (
+                                    ObjType: ot_Proveedor,
+                                    ID: objVerProveedor.ObjVer.ID
+                                );
+
+                                var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
+
+                                var oPropertyValue = new PropertyValue
+                                {
+                                    PropertyDef = pd_EstatusFlujoExcepciones
+                                };
+
+                                oLookup.Item = 1;
+
+                                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                                env.Vault.ObjectPropertyOperations.SetProperty
+                                (
+                                    ObjVer: checkedOutObjectVersion.ObjVer,
+                                    PropertyValue: oPropertyValue
+                                );
+
+                                env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
+                            }
+                            else
+                            {
+                                // Mover el Contrato firmado a un nuevo workflow
+                                if (cl_Contrato == iClase)
+                                {
+                                    oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_CicloVidaContrato);
+                                    oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_PresentacionPendiente);
+                                    env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                                }
+
+                                // Despues de la firma, mover la Orden de Compra Emitida o Factura Recibida a un nuevo workflow 
+                                if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase)
+                                {
+                                    oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_ValidacionesChecklist);
+                                    oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_DocumentoPorTraducir);
+                                    env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                                }
+                            }
+                        }
+                        
+                        //throw new Exception("No es posible asignar el Proveedor seleccionado a este documento, debido a que el Proveedor tiene una severidad de nivel Rojo o Naranja, al dar clic en e boton Guardar se solicitara la autorizacion para asignar al proveedor.");
+                    }
+                    else
+                    {
+                        // Mover el Contrato firmado a un nuevo workflow
+                        if (cl_Contrato == iClase)
+                        {
+                            oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_CicloVidaContrato);
+                            oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_PresentacionPendiente);
+                            env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                        }
+
+                        // Despues de la firma, mover la Orden de Compra Emitida o Factura Recibida a un nuevo workflow 
+                        if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase)
+                        {
+                            oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_ValidacionesChecklist);
+                            oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_DocumentoPorTraducir);
+                            env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                        }
+                    }
+                }
+                else
+                {
+                    // Mover el Contrato firmado a un nuevo workflow
+                    if (cl_Contrato == iClase)
+                    {
+                        oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_CicloVidaContrato);
+                        oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_PresentacionPendiente);
+                        env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                    }
+
+                    // Despues de la firma, mover la Orden de Compra Emitida o Factura Recibida a un nuevo workflow 
+                    if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase)
+                    {
+                        oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_ValidacionesChecklist);
+                        oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_DocumentoPorTraducir);
+                        env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+                    }
+                }
+            }  
+        }
+
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.Proveedor")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorDeServicioEspecializado")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorDependencia")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorEstratgico")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorExtranjero")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorTransportista")]
+        public void ProcesosProveedores(EventHandlerEnvironment env)
+        {
+            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
+            var pd_Severidad = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Severity");
+            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
+
+            var oPropertyValues = new PropertyValues();
+            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+            var iIdSeveridad = oPropertyValues.SearchForPropertyEx(pd_Severidad, true).TypedValue.GetLookupID();
+
+            if (iIdSeveridad == 1 || iIdSeveridad == 2)
+            {
+                // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
+                var oLookup = new Lookup();
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: ot_Proveedor,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_EstatusFlujoExcepciones
+                };
+
+                oLookup.Item = 5;
+
+                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+            }
+        }
+
+        [StateAction("WFS.FlujoDeExcepcionesProveedor.Firmado")]
+        public void FlujoDeExcepcionesProveedor_Firmado(StateEnvironment env)
+        {
+            var wf_CicloVidaContrato = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("MF.WF.ContractLifecycle");
+            var wfs_PresentacionPendiente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("M-Files.CLM.State.ContractLifecycle.PendingSubmission");
+            var wf_ValidacionesChecklist = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidcionesRepse");
+            var wfs_DocumentoPorTraducir = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesChecklist.DocumentoPorTraducir");
+            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
+            var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
+            var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
+            var cl_Contrato = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Contrato");
+            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
+
+            var oWorkflowstate = new ObjectVersionWorkflowState();
+            var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+            var oPropertyValues = new PropertyValues();
+            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+            var iClase = oPropertyValues
+                .SearchForPropertyEx((int)MFBuiltInPropertyDef.MFBuiltInPropertyDefClass, true)
+                .TypedValue
+                .GetLookupID();
+
+            var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
+            var objVerProveedor = oListProveedor[0];
+
+            // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
+            var oLookup = new Lookup();
+            var oObjID = new ObjID();
+
+            oObjID.SetIDs
+            (
+                ObjType: ot_Proveedor,
+                ID: objVerProveedor.ObjVer.ID
+            );
+
+            var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
+
+            var oPropertyValue = new PropertyValue
+            {
+                PropertyDef = pd_EstatusFlujoExcepciones
+            };
+
+            oLookup.Item = 2;
+
+            oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+            env.Vault.ObjectPropertyOperations.SetProperty
+            (
+                ObjVer: checkedOutObjectVersion.ObjVer,
+                PropertyValue: oPropertyValue
+            );
+
+            env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
+
+            // Mover el Contrato firmado a un nuevo workflow
+            if (cl_Contrato == iClase)
+            {                
+                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_CicloVidaContrato);
+                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_PresentacionPendiente);
+                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+            }
+
+            // Despues de la firma, mover la Orden de Compra Emitida o Factura Recibida a un nuevo workflow 
+            if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase)
+            {
+                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_ValidacionesChecklist);
+                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_DocumentoPorTraducir);
+                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
+            }
+        }
+
+        [StateAction("WFS.FlujoDeExcepcionesProveedor.Rechazado")]
+        public void FlujoDeExcepcionesProveedor_Rechazado(StateEnvironment env)
+        {
+            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
+            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
+
+            var oPropertyValues = new PropertyValues();
+            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+            var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
+            var objVerProveedor = oListProveedor[0];
+
+            // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
+            var oLookup = new Lookup();
+            var oObjID = new ObjID();
+
+            oObjID.SetIDs
+            (
+                ObjType: ot_Proveedor,
+                ID: objVerProveedor.ObjVer.ID
+            );
+
+            var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
+
+            var oPropertyValue = new PropertyValue
+            {
+                PropertyDef = pd_EstatusFlujoExcepciones
+            };
+
+            oLookup.Item = 3;
+
+            oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+            env.Vault.ObjectPropertyOperations.SetProperty
+            (
+                ObjVer: checkedOutObjectVersion.ObjVer,
+                PropertyValue: oPropertyValue
+            );
+
+            env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
+        }
+
+        [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaSinClasificar")]
+        public void ExportacionDeDocumentosCargaMasivaSinClasificar(EventHandlerEnvironment env)
+        {
+            var pd_Proveedor = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+            var pd_RfcEmpresa = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
+            var pd_EstadoProcesamiento = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
+            var pd_TipoProveedor = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.TipoDeProveedor");            
+            string sDirectorioChronoscan = "";
+            int iEstadoProcesamiento = 0;
+
+            // Files that we should clean up.
+            var filesToDelete = new List<string>();            
+
+            try
+            {
+                var oPropertyValues = new PropertyValues();
+
+                oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+                var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
+
+                var oObjVerExProveedor = oLookupsProveedor.ToObjVerExs(env.Vault);
+
+                oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(oObjVerExProveedor[0].ObjVer);
+
+                var sRFCEmpresaValue = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.GetValueAsLocalizedText();
+
+                var iIdTipoProveedor = oPropertyValues.SearchForPropertyEx(pd_TipoProveedor, true).TypedValue.GetLookupID();
+
+                if (iIdTipoProveedor == 1) // Persona Fisica
+                {
+                    sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaFisica;
+                }
+                else if (iIdTipoProveedor == 2) // Persona Moral
+                {
+                    sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaMoral;
+                }
+                else
+                {
+                    string sMensajeError = "No fue posible determinar el tipo de persona del proveedor: " + oObjVerExProveedor[0].Title;
+
+                    SysUtils.ReportErrorToEventLog(sMensajeError);
+                    throw new Exception(sMensajeError);
+                }
+
+                // Validar carpeta chronoscan, si no existe se crea
+                if (!Directory.Exists(sDirectorioChronoscan))
+                {
+                    Directory.CreateDirectory(sDirectorioChronoscan);
+                }
+
+                var oObjVerEx = env.ObjVerEx;
+                var oObjectFiles = oObjVerEx.Info.Files;
+                IEnumerator enumerator = oObjectFiles.GetEnumerator();
+
+                while (enumerator.MoveNext())
+                {
+                    ObjectFile oFile = (ObjectFile)enumerator.Current;
+
+                    var iObjectID = env.ObjVerEx.ID; //oFile.ID;
+
+                    var sObjectGUID = oObjVerEx.Info.ObjectGUID; //oFile.FileGUID;
+
+                    //var sDocumentoGUIDValue = sObjectGUID.Substring(1, sObjectGUID.LastIndexOf("}") - 1);
+
+                    string sFilePath = SysUtils.GetTempFileName(".tmp");
+
+                    // This must be generated from the temporary path and GetTempFileName. 
+                    // It cannot contain the original file name.
+                    filesToDelete.Add(sFilePath);
+
+                    // Gets the latest version of the specified file
+                    FileVer fileVer = oFile.FileVer;
+
+                    // Download the file to a temporary location
+                    env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sFilePath);
+
+                    var sFileName = oFile.GetNameForFileSystem();
+
+                    var sDelimitador = ".";
+
+                    int iIndex = sFileName.LastIndexOf(sDelimitador);
+
+                    //var sClassNameOrTitle = sFileName.Substring(0, iIndex);
+
+                    var sExtension = sFileName.Substring(iIndex + 1);
+
+                    // Directorio por RFC
+                    string sFilePathByRFC = Path.Combine(sDirectorioChronoscan, sRFCEmpresaValue);
+
+                    // Se crea el directorio por RFC si aun no existe 
+                    if (!Directory.Exists(sFilePathByRFC))
+                    {
+                        Directory.CreateDirectory(sFilePathByRFC);
+                    }
+
+                    // Nombre concatenado para el archivo
+                    var sFileNameConcatenado = iObjectID + " - " + sObjectGUID + "." + sExtension;
+
+                    //SysUtils.ReportInfoToEventLog("Nombre de archivo exportado: " + sFileNameConcatenado);
+
+                    // Directorio completo del documento
+                    string sNewFilePath = Path.Combine(sFilePathByRFC, sFileNameConcatenado);
+
+                    // Copiar el documento en el nuevo directorio
+                    File.Copy(sFilePath, sNewFilePath);
+
+
+                    if (File.Exists(sNewFilePath))
+                    {
+                        // Documento Procesado con exito
+                        iEstadoProcesamiento = 1;
+                    }
+                    else
+                    {
+                        // No Procesado o Termino en Error
+                        iEstadoProcesamiento = 2;
+                    }
+
+                    // Actualizacion de estado de procesamiento
+                    var oLookup = new Lookup();
+                    var oObjID = new ObjID();
+
+                    oObjID.SetIDs
+                    (
+                        ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                        ID: env.ObjVer.ID
+                    );
+
+                    var oPropertyValue = new PropertyValue
+                    {
+                        PropertyDef = pd_EstadoProcesamiento
+                    };
+
+                    oLookup.Item = iEstadoProcesamiento;
+
+                    oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                    env.Vault.ObjectPropertyOperations.SetProperty
+                    (
+                        ObjVer: env.ObjVer,
+                        PropertyValue: oPropertyValue
+                    );
+
+                    SysUtils.ReportInfoToEventLog("Exportacion completada. Documento: " + sFileNameConcatenado + ", Rfc: " + sRFCEmpresaValue);
+                }
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Error al exportar el documento, ", ex);
+            }
+            finally
+            {
+                // Always clean up the files (whether it works or not).
+                foreach (var sFile in filesToDelete)
+                {
+                    File.Delete(sFile);
+                }
             }
         }
 
@@ -1116,638 +2134,8 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                         env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
                     }
-                }                
-            }            
-        }
-
-        [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
-        public void CargaMasivaProveedores(EventHandlerEnvironment env)
-        {
-            bool bProcesoExitoso = false;
-            string sPathExcelFile = "";
-
-            // Inicializar objetos, propiedades, etc.
-            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
-            var pd_CrearListadoProveedores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.CrearListadoDeProveedores");
-            var pd_EstadoListadoProveedores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoListadoProveedores");
-            var pd_RfcEmpresa = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
-            var pd_EstadoProcesamiento = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
-            var oPropertyValues = new PropertyValues();
-
-            // Archivos que se deberan limpiar al final del proceso
-            var filesToDelete = new List<string>();
-            
-            try
-            {
-                oPropertyValues = env.ObjVerEx.Properties;
-
-                var sEstadoProcesamiento = oPropertyValues.SearchForPropertyEx(pd_EstadoProcesamiento, true).TypedValue.DisplayValue;
-                if (!sEstadoProcesamiento.Equals("Documento Procesado"))
-                {
-                    ////////////////////////////////////////////////////////////////
-                    ////////// Proceso Crear Listado de Proveedores ///////////////
-                    //////////////////////////////////////////////////////////////     
-
-                    // Si la propiedad crear listado de proveedores es true, generar el archivo excel
-                    if (!oPropertyValues.SearchForPropertyEx(pd_CrearListadoProveedores, true).TypedValue.IsNULL() &&
-                        Convert.ToBoolean(oPropertyValues.SearchForPropertyEx(pd_CrearListadoProveedores, true).TypedValue.Value) == true)
-                    {
-                        // Verificar estado de listado de proveedores
-                        if (oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() || 
-                            oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 1 || 
-                            oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 4)
-                        {
-                            // Subdirectorio temporal
-                            string sTempTempPath = @"C:\temp\temp\";
-
-                            if (!Directory.Exists(sTempTempPath))
-                                Directory.CreateDirectory(sTempTempPath);
-
-                            string[] files = Directory.GetFiles(sTempTempPath, "*.xlsx");
-
-                            if (files.Length == 0)
-                            {
-                                // Abrir la plantilla del listado de proveedores
-                                Application oExcelFile = new Application();
-                                Workbook wb = oExcelFile.Workbooks.Open(@"C:\temp\ListadoDeProveedores.xlsx");
-                                Worksheet ws1 = wb.Sheets[1];
-                                ws1.Activate();
-
-                                // Obtener todos los proveedores existentes en la boveda
-                                var searchBuilderProveedor = new MFSearchBuilder(env.Vault);
-                                searchBuilderProveedor.Deleted(false);
-                                searchBuilderProveedor.ObjType(ot_Proveedor);
-
-                                var searchResultsProveedor = searchBuilderProveedor.FindEx();
-
-                                foreach (var proveedor in searchResultsProveedor)
-                                {
-                                    oPropertyValues = proveedor.Properties;
-
-                                    var sNombreOTituloProveedor = oPropertyValues
-                                        .SearchForPropertyEx((int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle, true)
-                                        .TypedValue
-                                        .Value.ToString();
-
-                                    var sRfcProveedor = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.Value.ToString();
-
-                                    // Obtener el row en el que se agregar la informacion del proveedor                           
-                                    Range usedRange = ws1.UsedRange;
-                                    int rowCount = usedRange.Rows.Count;
-                                    int rowAdd = rowCount + 1;
-
-                                    // Agregar los datos del proveedor a la plantilla
-                                    ws1.Cells[rowAdd, 1] = sRfcProveedor;
-                                    ws1.Cells[rowAdd, 2] = sNombreOTituloProveedor;
-
-                                    // Liberar el rango actual para obtener el siguiente
-                                    Marshal.ReleaseComObject(usedRange);
-                                }
-
-                                // Guardar el archivo excel despues de obtener la informacion de los proveedores dados de alta en la boveda
-                                string sNameExcelFile = string.Format("ListadoDeProveedores_{0:yyyyMMdd_HHmmss}", DateTime.Now);
-                                sPathExcelFile = Path.Combine(sTempTempPath, string.Concat(sNameExcelFile, ".xlsx"));
-                                filesToDelete.Add(sPathExcelFile);
-
-                                wb.SaveAs(sPathExcelFile);
-                                wb.Close(true, Type.Missing, Type.Missing);
-                                oExcelFile.Quit();
-
-                                // Limpiar objetos
-                                GC.Collect();
-                                GC.WaitForPendingFinalizers();
-
-                                // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema                        
-                                Marshal.ReleaseComObject(ws1);
-                                Marshal.ReleaseComObject(wb);
-                                Marshal.ReleaseComObject(oExcelFile);
-
-                                // Modificar el documento de carga masiva de empleados
-                                var oLookupCrearListado = new Lookup();
-                                var objIDCrearListado = new ObjID();
-
-                                objIDCrearListado.SetIDs
-                                (
-                                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
-                                    ID: env.ObjVerEx.ID
-                                );
-
-                                var oPropertyValueCrearListado = new PropertyValue
-                                {
-                                    PropertyDef = pd_EstadoListadoProveedores
-                                };
-
-                                oLookupCrearListado.Item = 2;
-
-                                oPropertyValueCrearListado.TypedValue.SetValueToLookup(oLookupCrearListado);
-
-                                // Si el documento esta establecido como single file, modificar a multi file
-                                if (env.ObjVer.Type == (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument
-                                    && env.Vault.ObjectOperations.IsSingleFileObject(env.ObjVer) == true)
-                                {
-                                    env.Vault.ObjectOperations.SetSingleFileObject
-                                    (
-                                        ObjVer: env.ObjVer,
-                                        SingleFile: false
-                                    );
-                                }
-
-                                // Agregar el archivo al objeto
-                                env.Vault.ObjectFileOperations.AddFile(
-                                    ObjVer: env.ObjVer,
-                                    Title: sNameExcelFile,
-                                    Extension: "xlsx",
-                                    SourcePath: sPathExcelFile);
-
-                                // Actualizar estado de listado de proveedores
-                                env.Vault.ObjectPropertyOperations.SetProperty
-                                (
-                                    ObjVer: env.ObjVer,
-                                    PropertyValue: oPropertyValueCrearListado
-                                );
-                            }
-
-                            SysUtils.ReportInfoToEventLog("Se genero el listado de proveedores");
-                        }
-
-                        if (!oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() && 
-                            oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 2)
-                        {
-                            var oObjVerEx = env.ObjVerEx;
-                            var oObjectFiles = oObjVerEx.Info.Files;
-                            IEnumerator enumerator = oObjectFiles.GetEnumerator();
-
-                            while (enumerator.MoveNext())
-                            {
-                                // Descargar el excel como un archivo temporal
-                                ObjectFile oFile = (ObjectFile)enumerator.Current;
-                                string sPathTempFile = SysUtils.GetTempFileName(".tmp");
-                                filesToDelete.Add(sPathTempFile);
-                                FileVer fileVer = oFile.FileVer;
-
-                                env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
-
-                                Application oExcelFile = new Application();
-                                Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
-
-                                // Leer Sheet1 del excel
-                                Worksheet ws1 = wb.Sheets[1];
-                                ws1.Activate();
-                                Range oRangeColumnsWS1 = ws1.UsedRange;
-
-                                int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
-
-                                for (int i = 2; i <= rowCountWS1; i++)
-                                {
-                                    // Datos del proveedor
-                                    string sRfcProveedor = "";
-                                    string sNombreProveedor = "";
-                                    string sTipoProveedor = "";
-
-                                    sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
-                                    sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
-                                    sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
-
-                                    // Crear o actualizar el proveedor
-                                    if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor))
-                                    {
-                                        if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
-                                        {
-                                            // Actualizar estado de listado de proveedores
-                                            var oLookupActualizar = new Lookup();
-                                            var oObjIDActualizar = new ObjID();
-
-                                            oObjIDActualizar.SetIDs
-                                            (
-                                                ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
-                                                ID: env.ObjVer.ID
-                                            );
-
-                                            var oPropertyValueActualizar = new PropertyValue
-                                            {
-                                                PropertyDef = pd_EstadoListadoProveedores
-                                            };
-
-                                            oLookupActualizar.Item = 3;
-
-                                            oPropertyValueActualizar.TypedValue.SetValueToLookup(oLookupActualizar);
-
-                                            env.Vault.ObjectPropertyOperations.SetProperty
-                                            (
-                                                ObjVer: env.ObjVer,
-                                                PropertyValue: oPropertyValueActualizar
-                                            );
-
-                                            SysUtils.ReportInfoToEventLog("Proveedores actualizados exitosamente");
-                                        }
-                                    }
-                                }
-
-                                // Limpiar objetos
-                                GC.Collect();
-                                GC.WaitForPendingFinalizers();
-
-                                // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
-                                Marshal.ReleaseComObject(oRangeColumnsWS1);
-                                Marshal.ReleaseComObject(ws1);
-
-                                // Cerrar y liberar
-                                wb.Close();
-                                Marshal.ReleaseComObject(wb);
-
-                                // Quitar y liberar
-                                oExcelFile.Quit();
-                                Marshal.ReleaseComObject(oExcelFile);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        ////////////////////////////////////////////////////////////////
-                        ///////// Proceso Creacion Masiva de Proveedores //////////////
-                        //////////////////////////////////////////////////////////////                       
-
-                        var oObjVerEx = env.ObjVerEx;
-                        var oObjectFiles = oObjVerEx.Info.Files;
-                        IEnumerator enumerator = oObjectFiles.GetEnumerator();
-
-                        while (enumerator.MoveNext())
-                        {
-                            // Descargar el excel como un archivo temporal
-                            ObjectFile oFile = (ObjectFile)enumerator.Current;
-                            string sPathTempFile = SysUtils.GetTempFileName(".tmp");
-                            filesToDelete.Add(sPathTempFile);
-                            FileVer fileVer = oFile.FileVer;
-
-                            env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
-
-                            Application oExcelFile = new Application();
-                            Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
-
-                            // Leer Sheet1 del excel
-                            Worksheet ws1 = wb.Sheets[1];
-                            ws1.Activate();
-                            Range oRangeColumnsWS1 = ws1.UsedRange;
-
-                            int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
-
-                            // Leer Sheet2 del excel
-                            Worksheet ws2 = wb.Sheets[2];
-                            ws2.Activate();
-                            Range oRangeColumnsWS2 = ws2.UsedRange;
-
-                            int rowCountWS2 = oRangeColumnsWS2.Rows.Count;
-
-                            for (int ii = 2; ii <= rowCountWS2; ii++)
-                            {
-                                // Datos del contacto externo administrador
-                                string sRfcProveedor = "";
-                                string sNombre = "";
-                                string sApellidoPaterno = "";
-                                string sApellidoMaterno = "";
-                                string sCurp = "";
-                                string sEmail = "";
-
-                                sRfcProveedor = oRangeColumnsWS2.Cells[ii, 1].Value2.ToString();
-                                sNombre = oRangeColumnsWS2.Cells[ii, 2].Value2.ToString();
-                                sApellidoPaterno = oRangeColumnsWS2.Cells[ii, 3].Value2.ToString();
-                                sApellidoMaterno = oRangeColumnsWS2.Cells[ii, 4].Value2.ToString();
-                                sCurp = oRangeColumnsWS2.Cells[ii, 5].Value2.ToString();
-                                sEmail = oRangeColumnsWS2.Cells[ii, 6].Value2.ToString();
-
-                                // Crear o actualizar contacto externo administrador del proveedor
-                                if (CreateOrUpdateContactoExternoAdmin(env, sRfcProveedor, sNombre, sApellidoPaterno, sApellidoMaterno, sCurp, sEmail))
-                                {
-                                    bProcesoExitoso = true;
-                                }
-                            }
-
-                            for (int i = 2; i <= rowCountWS1; i++)
-                            {
-                                // Datos del proveedor
-                                string sRfcProveedor = "";
-                                string sNombreProveedor = "";
-                                string sTipoProveedor = "";
-
-                                sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
-                                sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
-                                sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
-
-                                // Crear o actualizar el proveedor
-                                if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor))
-                                {
-                                    if (bProcesoExitoso)
-                                    {
-                                        if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
-                                        {
-                                            SysUtils.ReportInfoToEventLog("Los proveedores fueron creados exitosamente");
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Limpiar objetos
-                            GC.Collect();
-                            GC.WaitForPendingFinalizers();
-
-                            // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
-                            Marshal.ReleaseComObject(oRangeColumnsWS1);
-                            Marshal.ReleaseComObject(ws1);
-                            Marshal.ReleaseComObject(oRangeColumnsWS2);
-                            Marshal.ReleaseComObject(ws2);
-
-                            // Cerrar y liberar
-                            wb.Close();
-                            Marshal.ReleaseComObject(wb);
-
-                            // Quitar y liberar
-                            oExcelFile.Quit();
-                            Marshal.ReleaseComObject(oExcelFile);
-                        }
-                    }
-
-                    // Establecer el estatus "Documento Procesado" de la propiedad Estado de Procesamiento
-                    var oLookup = new Lookup();
-                    var oObjID = new ObjID();
-
-                    oObjID.SetIDs
-                    (
-                        ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
-                        ID: env.ObjVer.ID
-                    );
-
-                    var oPropertyValue = new PropertyValue
-                    {
-                        PropertyDef = pd_EstadoProcesamiento
-                    };
-
-                    oLookup.Item = 1;
-
-                    oPropertyValue.TypedValue.SetValueToLookup(oLookup);
-
-                    env.Vault.ObjectPropertyOperations.SetProperty
-                    (
-                        ObjVer: env.ObjVer,
-                        PropertyValue: oPropertyValue
-                    );
                 }
             }
-            catch (Exception ex)
-            {
-                // Establecer el estatus "No Procesado (Error)" de la propiedad Estado de Procesamiento
-                var oLookup = new Lookup();
-                var oObjID = new ObjID();
-
-                oObjID.SetIDs
-                (
-                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
-                    ID: env.ObjVer.ID
-                );
-
-                var oPropertyValue = new PropertyValue
-                {
-                    PropertyDef = pd_EstadoProcesamiento
-                };
-
-                oLookup.Item = 2;
-
-                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
-
-                env.Vault.ObjectPropertyOperations.SetProperty
-                (
-                    ObjVer: env.ObjVer,
-                    PropertyValue: oPropertyValue
-                );
-
-                // Cerrar objetos abiertos de Interop Excel
-
-
-                SysUtils.ReportErrorMessageToEventLog("Error en proceso de creacion masiva de proveedores... ", ex);
-            }
-            finally
-            {
-                foreach (var sFile in filesToDelete)
-                {
-                    File.Delete(sFile);
-                }
-            }
-        }
-
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.OrdenDeCompraEmitidaProveedor")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.FacturaRecibidaProveedor")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.Contrato")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.OrdenDeCompraEmitidaProveedor")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.FacturaRecibidaProveedor")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.Contrato")]
-        public void FlujoExcepcionesProveedor(EventHandlerEnvironment env)
-        {
-            var wf_FlujoExcepcionesProveedor = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.FlujoDeExcepcionesProveedor");
-            var wfs_EstadoSolicitarFirma = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.FlujoDeExcepcionesProveedor.SolicitarFirma");
-            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
-            var cl_ProveedorServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.ProveedorDeServicioEspecializado");
-            var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
-            var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
-            var cl_Contrato = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Contrato");
-            var pd_RfcEmpresa = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
-            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
-            var pd_Severidad = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Severity");
-            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
-            var pd_Class = env.Vault.PropertyDefOperations.GetBuiltInPropertyDef(MFBuiltInPropertyDef.MFBuiltInPropertyDefClass);
-
-            var oPropertyValues = new PropertyValues();
-            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
-
-            var iClase = oPropertyValues.SearchForPropertyEx(pd_Class.ID, true).TypedValue.GetLookupID();
-
-            if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase || cl_Contrato == iClase)
-            {
-                // Verificar estatus de la firma del flujo de excepciones
-                UpdateEstatusDeFirmaFlujoExcepcionesProveedor(env);
-
-                //var sRfcProveedor = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.Value.ToString();
-                if (!oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.IsNULL())
-                {
-                    var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
-
-                    var objVerProveedor = oListProveedor[0];
-
-                    var oPropertyValuesProveedor = new PropertyValues();
-                    oPropertyValuesProveedor = objVerProveedor.Properties;
-
-                    var iIdSeveridad = oPropertyValuesProveedor.SearchForPropertyEx(pd_Severidad, true).TypedValue.GetLookupID();
-
-                    if (iIdSeveridad == 3 || iIdSeveridad == 4)
-                    {
-                        // Verificar si el proveedor con severidad rojo o naranja ya tiene la firma para asociar documentos
-                        if (oPropertyValuesProveedor.IndexOf(pd_EstatusFlujoExcepciones) != -1)
-                        {
-                            var iEstatusFlujoExcepciones = oPropertyValuesProveedor.SearchForPropertyEx(pd_EstatusFlujoExcepciones, true).TypedValue.GetLookupID();
-
-                            // Si el estatus es diferente Firmado se ingresa el documento al flujo de excepciones
-                            if (iEstatusFlujoExcepciones != 2)
-                            {
-                                // Asignar flujo de excepciones para solicitar firma a director
-                                var oWorkflowstate = new ObjectVersionWorkflowState();
-                                var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
-
-                                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_FlujoExcepcionesProveedor);
-                                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_EstadoSolicitarFirma);
-                                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
-
-                                // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
-                                var oLookup = new Lookup();
-                                var oObjID = new ObjID();
-
-                                oObjID.SetIDs
-                                (
-                                    ObjType: ot_Proveedor,
-                                    ID: objVerProveedor.ObjVer.ID
-                                );
-
-                                var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
-
-                                var oPropertyValue = new PropertyValue
-                                {
-                                    PropertyDef = pd_EstatusFlujoExcepciones
-                                };
-
-                                oLookup.Item = 1;
-
-                                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
-
-                                env.Vault.ObjectPropertyOperations.SetProperty
-                                (
-                                    ObjVer: checkedOutObjectVersion.ObjVer,
-                                    PropertyValue: oPropertyValue
-                                );
-
-                                env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
-                            }
-                        }
-                        
-                        //throw new Exception("No es posible asignar el Proveedor seleccionado a este documento, debido a que el Proveedor tiene una severidad de nivel Rojo o Naranja, al dar clic en e boton Guardar se solicitara la autorizacion para asignar al proveedor.");
-                    }
-                }
-            }  
-        }
-
-        [StateAction("WFS.FlujoDeExcepcionesProveedor.Firmado")]
-        public void WorkflowStateActionFirmado(StateEnvironment env)
-        {
-            var wf_CicloVidaContrato = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("MF.WF.ContractLifecycle");
-            var wfs_PresentacionPendiente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("M-Files.CLM.State.ContractLifecycle.PendingSubmission");
-            var wf_ValidacionesChecklist = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidcionesRepse");
-            var wfs_DocumentoPorTraducir = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesChecklist.DocumentoPorTraducir");
-            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
-            var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
-            var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
-            var cl_Contrato = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Contrato");
-            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
-            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
-
-            var oWorkflowstate = new ObjectVersionWorkflowState();
-            var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
-
-            var oPropertyValues = new PropertyValues();
-            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
-
-            var iClase = oPropertyValues
-                .SearchForPropertyEx((int)MFBuiltInPropertyDef.MFBuiltInPropertyDefClass, true)
-                .TypedValue
-                .GetLookupID();
-
-            var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
-            var objVerProveedor = oListProveedor[0];
-
-            // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
-            var oLookup = new Lookup();
-            var oObjID = new ObjID();
-
-            oObjID.SetIDs
-            (
-                ObjType: ot_Proveedor,
-                ID: objVerProveedor.ObjVer.ID
-            );
-
-            var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
-
-            var oPropertyValue = new PropertyValue
-            {
-                PropertyDef = pd_EstatusFlujoExcepciones
-            };
-
-            oLookup.Item = 2;
-
-            oPropertyValue.TypedValue.SetValueToLookup(oLookup);
-
-            env.Vault.ObjectPropertyOperations.SetProperty
-            (
-                ObjVer: checkedOutObjectVersion.ObjVer,
-                PropertyValue: oPropertyValue
-            );
-
-            env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
-
-            // Mover el Contrato firmado a un nuevo workflow
-            if (cl_Contrato == iClase)
-            {                
-                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_CicloVidaContrato);
-                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_PresentacionPendiente);
-                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
-            }
-
-            // Despues de la firma, mover la Orden de Compra Emitida o Factura Recibida a un nuevo workflow 
-            if (cl_OrdenCompraEmitidaProveedor == iClase || cl_FacturaRecibidaProveedor == iClase)
-            {
-                oWorkflowstate.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wf_ValidacionesChecklist);
-                oWorkflowstate.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, wfs_DocumentoPorTraducir);
-                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowstate);
-            }
-        }
-
-        [StateAction("WFS.FlujoDeExcepcionesProveedor.Rechazado")]
-        public void WorkflowStateActionRechazado(StateEnvironment env)
-        {
-            var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
-            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
-            var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
-
-            var oPropertyValues = new PropertyValues();
-            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
-
-            var oListProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
-            var objVerProveedor = oListProveedor[0];
-
-            // Asignar propiedad estatus del flujo de excepciones en la metadata del proveedor
-            var oLookup = new Lookup();
-            var oObjID = new ObjID();
-
-            oObjID.SetIDs
-            (
-                ObjType: ot_Proveedor,
-                ID: objVerProveedor.ObjVer.ID
-            );
-
-            var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
-
-            var oPropertyValue = new PropertyValue
-            {
-                PropertyDef = pd_EstatusFlujoExcepciones
-            };
-
-            oLookup.Item = 3;
-
-            oPropertyValue.TypedValue.SetValueToLookup(oLookup);
-
-            env.Vault.ObjectPropertyOperations.SetProperty
-            (
-                ObjVer: checkedOutObjectVersion.ObjVer,
-                PropertyValue: oPropertyValue
-            );
-
-            env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
         }
 
         private bool SetPropertiesInProveedorAndContactoExterno(EnvironmentBase env, string sRfcProveedor)
@@ -1937,10 +2325,18 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             return bResult;
         }
 
-        private bool CreateOrUpdateProveedor(EnvironmentBase env, string sRfcProvedor, string sNombreProveedor, string sTipoProveedor)
+        private bool CreateOrUpdateProveedor(EnvironmentBase env, 
+            string sRfcProvedor, 
+            string sNombreProveedor, 
+            string sTipoProveedor, 
+            string sTipoValidacionChecklist, 
+            string sTipoPersona, 
+            double sFechaInicioProveedor)
         {
             bool bResult = false;
             int iNuevaClaseAEstablecer = 0;
+            int iTipoProveedor = 0;
+            int iValidacionServiciosEspecializados = 0;
 
             var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
             var cl_Proveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Proveedor");
@@ -1956,6 +2352,9 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             var pd_UsarPlantillaHubshare = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.UsarPlantillaDeHubshare");
             var pd_ContactosExternosAdministradores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.ContactosExternosAdministradores");
             var pd_Severidad = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Severity");
+            var pd_ValidacionServiciosEspecializados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.TipoDeValidacionLeyDeOutsourcing");
+            var pd_TipoProveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.TipoDeProveedor");
+            var pd_FechaInicio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.StartDate");
 
             var oPropertyValues = new PropertyValues();
             var oLookups = new Lookups();
@@ -1997,11 +2396,28 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             else //if (sTipoProveedor == "Proveedor General")
                 iNuevaClaseAEstablecer = cl_Proveedor;
 
+            // Validar el tipo de persona
+            if (sTipoPersona == "Persona Moral")
+                iTipoProveedor = 2;
+            else
+                iTipoProveedor = 1;
+
+            // Tipo de validacion del checklist
+            if (sTipoValidacionChecklist == "Por Proveedor")
+                iValidacionServiciosEspecializados = 1;
+            else if (sTipoValidacionChecklist == "Orden de Compra, Contrato y/o Proyecto")
+                iValidacionServiciosEspecializados = 2;
+            else
+                iValidacionServiciosEspecializados = 3; // Por Empresa Interna 
+
+            // Conversion de fecha de inicio del proveedor
+            DateTime dtFechaInicio = DateTime.FromOADate(sFechaInicioProveedor);
+
             // Buscar Rfc en Proveedor
             var searchBuilderRfcProveedor = new MFSearchBuilder(env.Vault);
             searchBuilderRfcProveedor.Deleted(false); // No eliminados
             searchBuilderRfcProveedor.ObjType(ot_Proveedor);
-            searchBuilderRfcProveedor.Property(pd_RfcEmpresa, MFDataType.MFDatatypeText, sRfcProvedor);
+            searchBuilderRfcProveedor.Property(pd_RfcEmpresa, MFDataType.MFDatatypeText, sRfcProvedor);            
 
             var searchResultsRfcProveedor = searchBuilderRfcProveedor.FindEx();
 
@@ -2039,63 +2455,90 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     {
                         PropertyDef = (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefClass
                     };
-                    propValClase.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iNuevaClaseAEstablecer);
+                    propValClase.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iNuevaClaseAEstablecer); // Clase
                     oPropertyValues.Add(-1, propValClase);
 
                     var propValNombreProveedor = new PropertyValue
                     {
                         PropertyDef = (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle
                     };
-                    propValNombreProveedor.TypedValue.SetValue(MFDataType.MFDatatypeText, sNombreProveedor);
+                    propValNombreProveedor.TypedValue.SetValue(MFDataType.MFDatatypeText, sNombreProveedor); // Nombre o titulo
                     oPropertyValues.Add(-1, propValNombreProveedor);
 
                     var propValRfcEmpresa = new PropertyValue
                     {
                         PropertyDef = pd_RfcEmpresa
                     };
-                    propValRfcEmpresa.TypedValue.SetValue(MFDataType.MFDatatypeText, sRfcEmpresa);
+                    propValRfcEmpresa.TypedValue.SetValue(MFDataType.MFDatatypeText, sRfcEmpresa); // Rfc empresa
                     oPropertyValues.Add(-1, propValRfcEmpresa);
 
-                    var propValContactosExternosAdmin = new PropertyValue
+                    if (lookupsContactosExternosAdmin.Count > 0)
                     {
-                        PropertyDef = pd_ContactosExternosAdministradores
-                    };
-                    propValContactosExternosAdmin.TypedValue.SetValueToMultiSelectLookup(lookupsContactosExternosAdmin);
-                    oPropertyValues.Add(-1, propValContactosExternosAdmin);
+                        var propValContactosExternosAdmin = new PropertyValue
+                        {
+                            PropertyDef = pd_ContactosExternosAdministradores
+                        };
+                        propValContactosExternosAdmin.TypedValue.SetValueToMultiSelectLookup(lookupsContactosExternosAdmin); // Contactos externos administradores
+                        oPropertyValues.Add(-1, propValContactosExternosAdmin);
+                    }                    
 
-                    var propValSeveridad = new PropertyValue
+                    if (iSeveridad > 0)
                     {
-                        PropertyDef = pd_Severidad
+                        var propValSeveridad = new PropertyValue
+                        {
+                            PropertyDef = pd_Severidad
+                        };
+                        propValSeveridad.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iSeveridad); // Severidad
+                        oPropertyValues.Add(-1, propValSeveridad);
+                    }
+
+                    var propValTipoProveedor = new PropertyValue
+                    {
+                        PropertyDef = pd_TipoProveedor
                     };
-                    propValSeveridad.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iSeveridad);
-                    oPropertyValues.Add(-1, propValSeveridad);
+                    propValTipoProveedor.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iTipoProveedor); // Tipo de Proveedor
+                    oPropertyValues.Add(-1, propValTipoProveedor);
+
+                    var propValValidacionServiciosEspecializados = new PropertyValue
+                    {
+                        PropertyDef = pd_ValidacionServiciosEspecializados
+                    };
+                    propValValidacionServiciosEspecializados.TypedValue.SetValue(MFDataType.MFDatatypeLookup, iValidacionServiciosEspecializados); // Validacion Servicios Especializados
+                    oPropertyValues.Add(-1, propValValidacionServiciosEspecializados);
+
+                    var propValFechaInicio = new PropertyValue
+                    {
+                        PropertyDef = pd_FechaInicio
+                    };
+                    propValFechaInicio.TypedValue.SetValue(MFDataType.MFDatatypeDate, dtFechaInicio);
+                    oPropertyValues.Add(-1, propValFechaInicio);
 
                     var propValCrearHub = new PropertyValue
                     {
                         PropertyDef = pd_CrearHub
                     };
-                    propValCrearHub.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, true);
+                    propValCrearHub.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, true); // Crear hub
                     oPropertyValues.Add(-1, propValCrearHub);
 
                     var propValUsarPlantillaHubshare = new PropertyValue
                     {
                         PropertyDef = pd_UsarPlantillaHubshare
                     };
-                    propValUsarPlantillaHubshare.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, true);
+                    propValUsarPlantillaHubshare.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, true); // Usar plantilla hubshare
                     oPropertyValues.Add(-1, propValUsarPlantillaHubshare);
 
                     var propValHubshareTemplate = new PropertyValue
                     {
                         PropertyDef = pd_HubshareTemplate
                     };
-                    propValHubshareTemplate.TypedValue.SetValueToMultiSelectLookup(oLookups);
+                    propValHubshareTemplate.TypedValue.SetValueToMultiSelectLookup(oLookups); // Hubshare template
                     oPropertyValues.Add(-1, propValHubshareTemplate);
 
                     var propValSingleFile = new PropertyValue
                     {
                         PropertyDef = (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefSingleFileObject
                     };
-                    propValSingleFile.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, false);
+                    propValSingleFile.TypedValue.SetValue(MFDataType.MFDatatypeBoolean, false); // Single file object
                     oPropertyValues.Add(-1, propValSingleFile);
 
                     env.Vault.ObjectPropertyOperations.SetAllProperties
@@ -2130,6 +2573,9 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 createBuilder.Add(pd_CrearHub, MFDataType.MFDatatypeBoolean, true);
                 createBuilder.Add(pd_UsarPlantillaHubshare, MFDataType.MFDatatypeBoolean, true);
                 createBuilder.Add(pd_HubshareTemplate, MFDataType.MFDatatypeMultiSelectLookup, oLookups);
+                createBuilder.Add(pd_ValidacionServiciosEspecializados, MFDataType.MFDatatypeLookup, iValidacionServiciosEspecializados);
+                createBuilder.Add(pd_TipoProveedor, MFDataType.MFDatatypeLookup, iTipoProveedor);
+                createBuilder.Add(pd_FechaInicio, MFDataType.MFDatatypeDate, dtFechaInicio);
 
                 // Tipo de objeto a crear
                 var objectTypeId = ot_Proveedor;
@@ -2147,18 +2593,26 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             return bResult;
         }
 
-        private void SetPropertiesGenerico(EnvironmentBase env, int iClaseBusqueda, int iPropiedadBusqueda, int iPropiedadRelacion, Lookups oValorBusqueda, bool bValidarTipoDeContratoBusqueda = false)
+        private void SetPropertiesGenerico(EnvironmentBase env, int iClaseBusqueda, int iPropiedadBusqueda, int iPropiedadRelacion, Lookups oValorBusqueda, bool bSeRequiereBuscarProyectosRelacionados = true, bool bValidarTipoDeContratoBusqueda = false)
         {
             var pd_EsConvenioModificatorio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EsConvenioModificatorio");
+            var pd_ProyectosRelacionados = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Project");
 
             var oPropertyValue = new PropertyValue();
             var oLookups = new Lookups();
-            var oLookup = new Lookup();
+            var oLookup = new Lookup();            
 
             var searchBuilder = new MFSearchBuilder(env.Vault);
             searchBuilder.Deleted(false); // No eliminados
             searchBuilder.Class(iClaseBusqueda);
             searchBuilder.Property(iPropiedadBusqueda, MFDataType.MFDatatypeMultiSelectLookup, oValorBusqueda);
+
+            if (bSeRequiereBuscarProyectosRelacionados == true)
+            {
+                var oProyectosProperties = env.ObjVerEx.Properties;
+                var oProyectosRelacionados = oProyectosProperties.SearchForPropertyEx(pd_ProyectosRelacionados, true).TypedValue.GetValueAsLookups();
+                searchBuilder.Property(pd_ProyectosRelacionados, MFDataType.MFDatatypeMultiSelectLookup, oProyectosRelacionados);
+            }                
 
             if (bValidarTipoDeContratoBusqueda == true)
                 searchBuilder.Property(pd_EsConvenioModificatorio, MFDataType.MFDatatypeBoolean, true);
@@ -2366,14 +2820,14 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             );
         }
 
-        private bool GetExistingRfc(EnvironmentBase env, int iClase, int iPropertyDef, string sRfc)
+        private bool GetExistingRfc(EnvironmentBase env, int iTipoObjeto, int iPropertyDef, string sRfc)
         {
             bool result = false;
 
             // Buscar Rfc en Proveedor, Empresa Interna o Cliente
             var searchBuilder = new MFSearchBuilder(env.Vault);
             searchBuilder.Deleted(false); // No eliminados
-            searchBuilder.Class(iClase);
+            searchBuilder.ObjType(iTipoObjeto);
             searchBuilder.Property(iPropertyDef, MFDataType.MFDatatypeText, sRfc);
 
             var searchResults = searchBuilder.FindEx();
