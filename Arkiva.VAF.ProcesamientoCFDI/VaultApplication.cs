@@ -2039,6 +2039,41 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
         }
 
+        [PropertyCustomValue("PD.HubGuid")]
+        public TypedValue CalculatingHubGuidValue(PropertyEnvironment env)
+        {
+            var pd_Hubsharelink = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Hubsharelink");
+            var pd_HubGUID = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.HubGuid");
+
+            var oPropertyValues = new PropertyValues();
+            var oTypedValue = new TypedValue();
+
+            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+            if (oPropertyValues.IndexOf(pd_Hubsharelink) != -1)
+            {
+                var HubsharelinkValue = oPropertyValues
+                    .SearchForPropertyEx(pd_Hubsharelink, true)
+                    .TypedValue
+                    .GetValueAsLocalizedText();
+
+                // https://demo-usa.hubshare.com/#/Hub/29670d45-9172-4d95-955c-21d2f285e53c
+
+                var delimitador = "/";
+
+                int index = HubsharelinkValue.LastIndexOf(delimitador);
+
+                var HubGuidValue = HubsharelinkValue.Substring(index + 1);
+
+                if (oPropertyValues.IndexOf(pd_HubGUID) != -1)
+                {
+                    oTypedValue.SetValue(MFDataType.MFDatatypeText, HubGuidValue);
+                }
+            }
+
+            return oTypedValue;
+        }
+
         private void UpdateEstatusDeFirmaFlujoExcepcionesProveedor(EnvironmentBase env)
         {
             bool bFirmaEsValida = false;
