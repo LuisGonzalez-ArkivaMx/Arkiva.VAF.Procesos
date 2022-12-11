@@ -1313,7 +1313,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     {
                         // Descargar el excel como un archivo temporal
                         ObjectFile oFile = (ObjectFile)enumerator.Current;
-                        string sPathTempFile = SysUtils.GetTempFileName(".tmp");
+                        string sPathTempFile = @"C:\temp\Nuevo\temp\tempFile.xlsx"; //SysUtils.GetTempFileName(".tmp");
                         //filesToDelete.Add(sPathTempFile);
                         FileVer fileVer = oFile.FileVer;
 
@@ -1322,6 +1322,19 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         SysUtils.ReportInfoToEventLog("Ruta de descarga del archivo temporal: " + sPathTempFile);
 
                         Application oExcelFile = new Application();
+
+                        object misValue = System.Reflection.Missing.Value;
+                        Workbook xlWb = oExcelFile.Workbooks.Add(misValue);
+                        Worksheet xlWs = (Worksheet)xlWb.Worksheets.get_Item(1);
+                        xlWs.Cells[1, 1] = "ID";
+                        xlWs.Cells[1, 2] = "Nombre";
+                        xlWs.Cells[2, 1] = "1";
+                        xlWs.Cells[2, 2] = "Uno";
+                        xlWs.Cells[3, 1] = "2";
+                        xlWs.Cells[3, 2] = "Dos";
+                        xlWb.SaveAs(@"C:\temp\Nuevo\temp\testFile.xlsx");
+                        xlWb.Close(true, misValue, misValue);
+
                         Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
 
                         // Leer Sheet1 del excel
@@ -2834,8 +2847,11 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
         private void CreateRfcObject(EnvironmentBase env, int iObjecto, int iClase, int iPropertyDef, string sRfc, string sNombreOTitulo)
         {
+            var wf_ValidacionesDocumentoProveedor = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidacionesDocumentoProveedor");
+            var wfs_DocumentoVigente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesDocumentoProveedor.DocumentoVigente");
+
             var createBuilder = new MFPropertyValuesBuilder(env.Vault);
-            createBuilder.SetClass(iClase);
+            createBuilder.SetClass(iClase); // Clase
             createBuilder.Add
             (
                 (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle,
@@ -2843,9 +2859,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 sNombreOTitulo // Name or title
             );
             createBuilder.Add(iPropertyDef, MFDataType.MFDatatypeText, sRfc); // Rfc
+            createBuilder.SetWorkflowState(wf_ValidacionesDocumentoProveedor, wfs_DocumentoVigente); // Workflow
 
             // Tipo de objeto a crear
-            var objectTypeId = iObjecto;
+            var objectTypeId = iObjecto; // Tipo de objeto
 
             var objectVersion = env.Vault.ObjectOperations.CreateNewObjectEx
             (
