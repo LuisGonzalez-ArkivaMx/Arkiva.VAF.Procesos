@@ -5,13 +5,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
+using System.Web;
 using System.Xml;
+using iTextSharp.text.pdf.codec.wmf;
 using MFiles.VAF;
 using MFiles.VAF.Common;
 using MFiles.VAF.Configuration;
 using MFiles.VAF.Core;
 using MFilesAPI;
 using Microsoft.Office.Interop.Excel;
+using SpreadsheetLight;
 
 namespace Arkiva.VAF.ProcesamientoCFDI
 {
@@ -22,6 +26,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
     public class VaultApplication
         : ConfigurableVaultApplicationBase<Configuration>
     {
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaMasivaDeCfdi")]
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaDeCfdi")]
         public void ProcesarMetadataCFDIYCrearClaseCFDINomina(EventHandlerEnvironment env)
         {
@@ -995,12 +1000,114 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         //        // Relacionar a contratos relacionados
         //        SetPropertiesGenerico(env, cl_Contrato, pd_EmpresaInterna, pd_ContratosRelacionados, oLookupsEmpresaInterna, false);
         //    }           
-        //}        
+        //}       
+                                
+        [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
+        public void Asignar_Workflow_CreacionMasivaProveedores(EventHandlerEnvironment env)
+        {
+            var workflow = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowIDByAlias("WF.CargaMasivaDeProveedores");
 
-        //[EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]        
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
-        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
-        public void ProcesosCreacionMasivaProveedores(EventHandlerEnvironment env)
+            var estado = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowStateIDByAlias("WFS.CargaMasivaDeProveedores.Inicio");
+
+            var pd_EstadoProcesamiento = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
+
+            try
+            {
+                var oWorkflowState = new ObjectVersionWorkflowState();
+                var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
+
+                // Actualizacion de estado de procesamiento
+                var oLookup = new Lookup();
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_EstadoProcesamiento
+                };
+
+                oLookup.Item = 3;
+
+                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Ocurrio un error al asignar workflow en Creacion Masiva de Proveedores.", ex);
+            }
+        }
+
+        [StateAction("WFS.CargaMasivaDeProveedores.Procesar", Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
+        public void Procesar_CreacionMasivaProveedores(StateEnvironment env)
+        {
+            // Archivos que se deberan limpiar al final del proceso
+            var filesToDelete = new List<string>();
+
+            if (env.ObjVerEx.IsEnteringState)
+            {
+                try
+                {
+                    var oObjVerEx = env.ObjVerEx;
+                    var oObjectFiles = oObjVerEx.Info.Files;
+                    IEnumerator enumerator = oObjectFiles.GetEnumerator();
+
+                    while (enumerator.MoveNext())
+                    {
+                        // Descargar el archivo temporal
+                        ObjectFile oFile = (ObjectFile)enumerator.Current;
+                        string sPathTempFile = SysUtils.GetTempFileName(".tmp"); //@"C:\temp\CargaMasivaProveedores\temp\tempFile.xlsx"; //
+                        filesToDelete.Add(sPathTempFile);
+
+                        FileVer fileVer = oFile.FileVer;
+
+                        env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
+
+                        string sNewPathTempFile = @"C:\temp\CargaMasivaProveedores\temp\tempFileCopy.xls";
+                        filesToDelete.Add(sNewPathTempFile);
+
+                        File.Copy(sPathTempFile, sNewPathTempFile, true);
+
+                        if (File.Exists(sNewPathTempFile))
+                        {
+                            CreateNewObjectCreacionMasivaDeProveedores(env, sPathTempFile);
+                        }                        
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SysUtils.ReportErrorMessageToEventLog("Error al intentar procesar el documento.", ex);
+                }
+                finally
+                {
+                    foreach (var sFile in filesToDelete)
+                    {
+                        File.Delete(sFile);
+                    }
+                }
+            }
+        }
+
+        //[EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
+        [EventHandler(MFEventHandlerType.MFEventHandlerAfterCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProveedores")]
+        public void EventHandler_CreacionMasivaProveedores(EventHandlerEnvironment env)
         {
             bool bProcesoExitoso = false;
             string sPathExcelFile = "";
@@ -1012,6 +1119,14 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             var pd_RfcEmpresa = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
             var pd_EstadoProcesamiento = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
             var oPropertyValues = new PropertyValues();
+
+            var workflow = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowIDByAlias("WF.CargaMasivaDeProveedores");
+
+            var estado = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowStateIDByAlias("WFS.CargaMasivaDeProveedores.Terminado");
 
             // Archivos que se deberan limpiar al final del proceso
             var filesToDelete = new List<string>();
@@ -1029,12 +1144,12 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     Convert.ToBoolean(oPropertyValues.SearchForPropertyEx(pd_CrearListadoProveedores, true).TypedValue.Value) == true)
                 {
                     // Verificar estado de listado de proveedores
-                    if (oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() || 
-                        oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 1 || 
+                    if (oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() ||
+                        oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 1 ||
                         oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 4)
                     {
                         // Subdirectorio temporal
-                        string sTempTempPath = @"C:\temp\temp\";
+                        string sTempTempPath = @"C:\temp\CargaMasivaProveedores\temp\";
 
                         if (!Directory.Exists(sTempTempPath))
                             Directory.CreateDirectory(sTempTempPath);
@@ -1045,7 +1160,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         {
                             // Abrir la plantilla del listado de proveedores
                             Application oExcelFile = new Application();
-                            Workbook wb = oExcelFile.Workbooks.Open(@"C:\temp\ListadoDeProveedores.xlsx");
+                            Workbook wb = oExcelFile.Workbooks.Open(@"C:\temp\CargaMasivaProveedores\ListadoDeProveedores.xlsx");
                             Worksheet ws1 = wb.Sheets[1];
                             ws1.Activate();
 
@@ -1171,7 +1286,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         SysUtils.ReportInfoToEventLog("Se genero el listado de proveedores");
                     }
 
-                    if (!oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() && 
+                    if (!oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.IsNULL() &&
                         oPropertyValues.SearchForPropertyEx(pd_EstadoListadoProveedores, true).TypedValue.GetLookupID() == 2)
                     {
                         var oObjVerEx = env.ObjVerEx;
@@ -1251,7 +1366,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                                             SysUtils.ReportInfoToEventLog("Se relacionaron contactos externos al proveedor");
                                         }
                                     }
-                                }                                
+                                }
                             }
 
                             // Limpiar objetos
@@ -1295,6 +1410,14 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                             ObjVer: env.ObjVer,
                             PropertyValue: oPropertyValue
                         );
+
+                        // Actualizacion de estado del workflow
+                        var oWorkflowState = new ObjectVersionWorkflowState();
+                        var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                        oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                        oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                        env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
                     }
                 }
                 else
@@ -1313,7 +1436,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     {
                         // Descargar el excel como un archivo temporal
                         ObjectFile oFile = (ObjectFile)enumerator.Current;
-                        string sPathTempFile = @"C:\temp\Nuevo\temp\tempFile.xlsx"; //SysUtils.GetTempFileName(".tmp");
+                        string sPathTempFile = SysUtils.GetTempFileName(".tmp");
                         //filesToDelete.Add(sPathTempFile);
                         FileVer fileVer = oFile.FileVer;
 
@@ -1322,112 +1445,159 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         SysUtils.ReportInfoToEventLog("Ruta de descarga del archivo temporal: " + sPathTempFile);
 
                         Application oExcelFile = new Application();
-
-                        object misValue = System.Reflection.Missing.Value;
-                        Workbook xlWb = oExcelFile.Workbooks.Add(misValue);
-                        Worksheet xlWs = (Worksheet)xlWb.Worksheets.get_Item(1);
-                        xlWs.Cells[1, 1] = "ID";
-                        xlWs.Cells[1, 2] = "Nombre";
-                        xlWs.Cells[2, 1] = "1";
-                        xlWs.Cells[2, 2] = "Uno";
-                        xlWs.Cells[3, 1] = "2";
-                        xlWs.Cells[3, 2] = "Dos";
-                        xlWb.SaveAs(@"C:\temp\Nuevo\temp\testFile.xlsx");
-                        xlWb.Close(true, misValue, misValue);
-
                         Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
 
-                        // Leer Sheet1 del excel
-                        Worksheet ws1 = wb.Sheets[1];
-                        ws1.Activate();
-                        Range oRangeColumnsWS1 = ws1.UsedRange;
+                        SLDocument slExcel = new SLDocument(sPathTempFile);
 
-                        int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
+                        // Contactos Externos Administradores
+                        slExcel.SelectWorksheet("Sheet2");
 
-                        // Leer Sheet2 del excel
-                        Worksheet ws2 = wb.Sheets[2];
-                        ws2.Activate();
-                        Range oRangeColumnsWS2 = ws2.UsedRange;
+                        int iRowSheet2 = 2;
 
-                        int rowCountWS2 = oRangeColumnsWS2.Rows.Count;
-
-                        for (int ii = 2; ii <= rowCountWS2; ii++)
+                        while (!string.IsNullOrEmpty(slExcel.GetCellValueAsString(iRowSheet2, 1)))
                         {
-                            // Datos del contacto externo administrador
-                            string sRfcProveedor = "";
-                            string sNombre = "";
-                            string sApellidoPaterno = "";
-                            string sApellidoMaterno = "";
-                            string sCurp = "";
-                            string sEmail = "";
+                            string rfcProveedor = slExcel.GetCellValueAsString(iRowSheet2, 1);
+                            string nombre = slExcel.GetCellValueAsString(iRowSheet2, 2);
+                            string apellidoP = slExcel.GetCellValueAsString(iRowSheet2, 3);
+                            string apellidoM = slExcel.GetCellValueAsString(iRowSheet2, 4);
+                            string curp = slExcel.GetCellValueAsString(iRowSheet2, 5);
+                            string email = slExcel.GetCellValueAsString(iRowSheet2, 6);
 
-                            sRfcProveedor = oRangeColumnsWS2.Cells[ii, 1].Value2.ToString();
-                            sNombre = oRangeColumnsWS2.Cells[ii, 2].Value2.ToString();
-                            sApellidoPaterno = oRangeColumnsWS2.Cells[ii, 3].Value2.ToString();
-                            sApellidoMaterno = oRangeColumnsWS2.Cells[ii, 4].Value2.ToString();
-                            sCurp = oRangeColumnsWS2.Cells[ii, 5].Value2.ToString();
-                            sEmail = oRangeColumnsWS2.Cells[ii, 6].Value2.ToString();
+                            SysUtils.ReportInfoToEventLog("RFC del proveedor: " + rfcProveedor);
 
-                            SysUtils.ReportInfoToEventLog("RFC del proveedor: " + sRfcProveedor);
-
-                            // Crear o actualizar contacto externo administrador del proveedor
-                            if (CreateOrUpdateContactoExternoAdmin(env, sRfcProveedor, sNombre, sApellidoPaterno, sApellidoMaterno, sCurp, sEmail))
+                            // Actualizar o crear contacto externo admin
+                            if (CreateOrUpdateContactoExternoAdmin(env, rfcProveedor, nombre, apellidoP, apellidoM, curp, email))
                             {
                                 bProcesoExitoso = true;
                             }
+
+                            iRowSheet2++;
                         }
 
-                        for (int i = 3; i <= rowCountWS1; i++)
+                        // Proveedores
+                        slExcel.SelectWorksheet("Sheet1");
+
+                        int iRowSheet1 = 2;
+
+                        while (!string.IsNullOrEmpty(slExcel.GetCellValueAsString(iRowSheet1, 1)))
                         {
-                            // Datos del proveedor
-                            string sRfcProveedor = "";
-                            string sNombreProveedor = "";
-                            string sTipoProveedor = "";
-                            string sTipoValidacionChecklist = "";
-                            string sTipoPersona = "";
+                            string rfcProveedor = slExcel.GetCellValueAsString(iRowSheet1, 1);
+                            string nombreProveedor = slExcel.GetCellValueAsString(iRowSheet1, 2);
+                            string tipoProveedor = slExcel.GetCellValueAsString(iRowSheet1, 3);
+                            string tipoValChecklist = slExcel.GetCellValueAsString(iRowSheet1, 4);
+                            string tipoPersona = slExcel.GetCellValueAsString(iRowSheet1, 5);
+                            DateTime fechaInicio = slExcel.GetCellValueAsDateTime(iRowSheet1, 6);
 
-                            if (!(oRangeColumnsWS1.Cells[i, 1].Value2 is null))
+                            // Crear o actualizar proveedor
+                            if (CreateOrUpdateProveedor(env, rfcProveedor, nombreProveedor, tipoProveedor, tipoValChecklist, tipoPersona, fechaInicio))
                             {
-                                SysUtils.ReportInfoToEventLog("La celda no es nula");
-
-                                sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
-                                sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
-                                sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
-                                sTipoValidacionChecklist = oRangeColumnsWS1.Cells[i, 4].Value2.ToString();
-                                sTipoPersona = oRangeColumnsWS1.Cells[i, 5].Value2.ToString();
-                                var sFechaInicioProveedor = oRangeColumnsWS1.Cells[i, 6].Value2;
-
-                                // Crear o actualizar el proveedor
-                                if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor, sTipoValidacionChecklist, sTipoPersona, sFechaInicioProveedor))
+                                if (bProcesoExitoso)
                                 {
-                                    if (bProcesoExitoso)
+                                    if (SetPropertiesInProveedorAndContactoExterno(env, rfcProveedor))
                                     {
-                                        if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
-                                        {
-                                            SysUtils.ReportInfoToEventLog("Los proveedores fueron creados exitosamente");
-                                        }
+                                        SysUtils.ReportInfoToEventLog("Los proveedores fueron creados exitosamente");
                                     }
                                 }
-                            }                            
+                            }
+
+                            iRowSheet1++;
                         }
 
-                        // Limpiar objetos
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
+                        //Application oExcelFile = new Application();                       
 
-                        // Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
-                        Marshal.ReleaseComObject(oRangeColumnsWS1);
-                        Marshal.ReleaseComObject(ws1);
-                        Marshal.ReleaseComObject(oRangeColumnsWS2);
-                        Marshal.ReleaseComObject(ws2);
+                        //Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
 
-                        // Cerrar y liberar
-                        wb.Close();
-                        Marshal.ReleaseComObject(wb);
+                        //// Leer Sheet1 del excel
+                        //Worksheet ws1 = wb.Sheets[1];
+                        //ws1.Activate();
+                        //Range oRangeColumnsWS1 = ws1.UsedRange;
 
-                        // Quitar y liberar
-                        oExcelFile.Quit();
-                        Marshal.ReleaseComObject(oExcelFile);
+                        //int rowCountWS1 = oRangeColumnsWS1.Rows.Count;
+
+                        //// Leer Sheet2 del excel
+                        //Worksheet ws2 = wb.Sheets[2];
+                        //ws2.Activate();
+                        //Range oRangeColumnsWS2 = ws2.UsedRange;
+
+                        //int rowCountWS2 = oRangeColumnsWS2.Rows.Count;
+
+                        //for (int ii = 2; ii <= rowCountWS2; ii++)
+                        //{
+                        //    // Datos del contacto externo administrador
+                        //    string sRfcProveedor = "";
+                        //    string sNombre = "";
+                        //    string sApellidoPaterno = "";
+                        //    string sApellidoMaterno = "";
+                        //    string sCurp = "";
+                        //    string sEmail = "";
+
+                        //    sRfcProveedor = oRangeColumnsWS2.Cells[ii, 1].Value2.ToString();
+                        //    sNombre = oRangeColumnsWS2.Cells[ii, 2].Value2.ToString();
+                        //    sApellidoPaterno = oRangeColumnsWS2.Cells[ii, 3].Value2.ToString();
+                        //    sApellidoMaterno = oRangeColumnsWS2.Cells[ii, 4].Value2.ToString();
+                        //    sCurp = oRangeColumnsWS2.Cells[ii, 5].Value2.ToString();
+                        //    sEmail = oRangeColumnsWS2.Cells[ii, 6].Value2.ToString();
+
+                        //    SysUtils.ReportInfoToEventLog("RFC del proveedor: " + sRfcProveedor);
+
+                        //    // Crear o actualizar contacto externo administrador del proveedor
+                        //    if (CreateOrUpdateContactoExternoAdmin(env, sRfcProveedor, sNombre, sApellidoPaterno, sApellidoMaterno, sCurp, sEmail))
+                        //    {
+                        //        bProcesoExitoso = true;
+                        //    }
+                        //}
+
+                        //for (int i = 3; i <= rowCountWS1; i++)
+                        //{
+                        //    // Datos del proveedor
+                        //    string sRfcProveedor = "";
+                        //    string sNombreProveedor = "";
+                        //    string sTipoProveedor = "";
+                        //    string sTipoValidacionChecklist = "";
+                        //    string sTipoPersona = "";
+
+                        //    if (!(oRangeColumnsWS1.Cells[i, 1].Value2 is null))
+                        //    {
+                        //        SysUtils.ReportInfoToEventLog("La celda no es nula");
+
+                        //        sRfcProveedor = oRangeColumnsWS1.Cells[i, 1].Value2.ToString();
+                        //        sNombreProveedor = oRangeColumnsWS1.Cells[i, 2].Value2.ToString();
+                        //        sTipoProveedor = oRangeColumnsWS1.Cells[i, 3].Value2.ToString();
+                        //        sTipoValidacionChecklist = oRangeColumnsWS1.Cells[i, 4].Value2.ToString();
+                        //        sTipoPersona = oRangeColumnsWS1.Cells[i, 5].Value2.ToString();
+                        //        var sFechaInicioProveedor = oRangeColumnsWS1.Cells[i, 6].Value2;
+
+                        //        // Crear o actualizar el proveedor
+                        //        if (CreateOrUpdateProveedor(env, sRfcProveedor, sNombreProveedor, sTipoProveedor, sTipoValidacionChecklist, sTipoPersona, sFechaInicioProveedor))
+                        //        {
+                        //            if (bProcesoExitoso)
+                        //            {
+                        //                if (SetPropertiesInProveedorAndContactoExterno(env, sRfcProveedor))
+                        //                {
+                        //                    SysUtils.ReportInfoToEventLog("Los proveedores fueron creados exitosamente");
+                        //                }
+                        //            }
+                        //        }
+                        //    }                            
+                        //}
+
+                        //// Limpiar objetos
+                        //GC.Collect();
+                        //GC.WaitForPendingFinalizers();
+
+                        //// Liberar objetos para matar el proceso Excel que esta corriendo por detras del sistema
+                        //Marshal.ReleaseComObject(oRangeColumnsWS1);
+                        //Marshal.ReleaseComObject(ws1);
+                        //Marshal.ReleaseComObject(oRangeColumnsWS2);
+                        //Marshal.ReleaseComObject(ws2);
+
+                        //// Cerrar y liberar
+                        //wb.Close();
+                        //Marshal.ReleaseComObject(wb);
+
+                        //// Quitar y liberar
+                        //oExcelFile.Quit();
+                        //Marshal.ReleaseComObject(oExcelFile);
                     }
 
                     // Establecer el estatus "Documento Procesado" de la propiedad Estado de Procesamiento
@@ -1454,7 +1624,15 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         ObjVer: env.ObjVer,
                         PropertyValue: oPropertyValue
                     );
-                }  
+
+                    // Actualizacion de estado del workflow
+                    var oWorkflowState = new ObjectVersionWorkflowState();
+                    var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                    oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                    oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                    env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
+                }
             }
             catch (Exception ex)
             {
@@ -1486,7 +1664,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 // Cerrar objetos abiertos de Interop Excel
 
 
-                SysUtils.ReportErrorMessageToEventLog("Error en proceso de creacion masiva de proveedores... ", ex);
+                SysUtils.ReportErrorMessageToEventLog("Error en proceso de creacion masiva de proveedores.", ex);
             }
             finally
             {
@@ -1891,9 +2069,89 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
         }
 
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaMasivaSinClasificar")]
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaSinClasificar")]
-        public void ExportacionDeDocumentosCargaMasivaSinClasificar(EventHandlerEnvironment env)
+        public void Asignar_Workflow_CargaMasivaSinClasificar(EventHandlerEnvironment env)
         {
+            var workflow = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowIDByAlias("WF.ValidacionesDocumentosChronoscan");
+
+            var estado = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowStateIDByAlias("WFS.ValidacionesDocumentosChronoscan.Inicio");
+
+            var pd_EstadoProcesamiento = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
+
+            try
+            {
+                var oWorkflowState = new ObjectVersionWorkflowState();
+                var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
+
+                // Actualizacion de estado de procesamiento
+                var oLookup = new Lookup();
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_EstadoProcesamiento
+                };
+
+                oLookup.Item = 3;
+
+                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Ocurrio un error al asignar workflow en Carga Masiva sin Clasificar", ex);
+            }
+        }
+
+        async Task PutTaskDelay()
+        {
+            TimeSpan timeSpan = TimeSpan.FromSeconds(30);
+
+            try
+            {
+                await Task.Delay(timeSpan);
+            }
+            catch (TaskCanceledException ex)
+            {
+                SysUtils.ReportErrorToEventLog("TaskCanceledException error: " + ex);
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorToEventLog("Exception error: " + ex);
+            }
+        }
+              
+        [StateAction("WFS.ValidacionesDocumentosChronoscan.EnviarAChronoscan", Class = "CL.CargaMasivaSinClasificar")]
+        public void EnviarAChronoscan_DocumentosCargaMasivaSinClasificar(StateEnvironment env)
+        {
+            var workflow = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowIDByAlias("WF.ValidacionesDocumentosChronoscan");
+
+            var estado = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowStateIDByAlias("WFS.ValidacionesDocumentosChronoscan.Enviado");
+
             var pd_Proveedor = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
             var pd_RfcEmpresa = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
             var pd_EstadoProcesamiento = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
@@ -1906,141 +2164,154 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
             try
             {
-                var oPropertyValues = new PropertyValues();
+                //await PutTaskDelay(); // Delay al exportar el documento a Chronoscan
 
-                oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
-
-                var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
-
-                var oObjVerExProveedor = oLookupsProveedor.ToObjVerExs(env.Vault);
-
-                oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(oObjVerExProveedor[0].ObjVer);
-
-                var sRFCEmpresaValue = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.GetValueAsLocalizedText();
-
-                var iIdTipoProveedor = oPropertyValues.SearchForPropertyEx(pd_TipoProveedor, true).TypedValue.GetLookupID();
-
-                if (iIdTipoProveedor == 1) // Persona Fisica
+                if (env.ObjVerEx.IsEnteringState)
                 {
-                    sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaFisica;
-                }
-                else if (iIdTipoProveedor == 2) // Persona Moral
-                {
-                    sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaMoral;
-                }
-                else
-                {
-                    string sMensajeError = "No fue posible determinar el tipo de persona del proveedor: " + oObjVerExProveedor[0].Title;
+                    var oPropertyValues = new PropertyValues();
 
-                    SysUtils.ReportErrorToEventLog(sMensajeError);
-                    throw new Exception(sMensajeError);
-                }
+                    oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
 
-                // Validar carpeta chronoscan, si no existe se crea
-                if (!Directory.Exists(sDirectorioChronoscan))
-                {
-                    Directory.CreateDirectory(sDirectorioChronoscan);
-                }
+                    var oLookupsProveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups();
 
-                var oObjVerEx = env.ObjVerEx;
-                var oObjectFiles = oObjVerEx.Info.Files;
-                IEnumerator enumerator = oObjectFiles.GetEnumerator();
+                    var oObjVerExProveedor = oLookupsProveedor.ToObjVerExs(env.Vault);
 
-                while (enumerator.MoveNext())
-                {
-                    ObjectFile oFile = (ObjectFile)enumerator.Current;
+                    oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(oObjVerExProveedor[0].ObjVer);
 
-                    var iObjectID = env.ObjVerEx.ID; //oFile.ID;
+                    var sRFCEmpresaValue = oPropertyValues.SearchForPropertyEx(pd_RfcEmpresa, true).TypedValue.GetValueAsLocalizedText();
 
-                    var sObjectGUID = oObjVerEx.Info.ObjectGUID; //oFile.FileGUID;
+                    var iIdTipoProveedor = oPropertyValues.SearchForPropertyEx(pd_TipoProveedor, true).TypedValue.GetLookupID();
 
-                    //var sDocumentoGUIDValue = sObjectGUID.Substring(1, sObjectGUID.LastIndexOf("}") - 1);
-
-                    string sFilePath = SysUtils.GetTempFileName(".tmp");
-
-                    // This must be generated from the temporary path and GetTempFileName. 
-                    // It cannot contain the original file name.
-                    filesToDelete.Add(sFilePath);
-
-                    // Gets the latest version of the specified file
-                    FileVer fileVer = oFile.FileVer;
-
-                    // Download the file to a temporary location
-                    env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sFilePath);
-
-                    var sFileName = oFile.GetNameForFileSystem();
-
-                    var sDelimitador = ".";
-
-                    int iIndex = sFileName.LastIndexOf(sDelimitador);
-
-                    //var sClassNameOrTitle = sFileName.Substring(0, iIndex);
-
-                    var sExtension = sFileName.Substring(iIndex + 1);
-
-                    // Directorio por RFC
-                    string sFilePathByRFC = Path.Combine(sDirectorioChronoscan, sRFCEmpresaValue);
-
-                    // Se crea el directorio por RFC si aun no existe 
-                    if (!Directory.Exists(sFilePathByRFC))
+                    if (iIdTipoProveedor == 1) // Persona Fisica
                     {
-                        Directory.CreateDirectory(sFilePathByRFC);
+                        sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaFisica;
                     }
-
-                    // Nombre concatenado para el archivo
-                    var sFileNameConcatenado = iObjectID + " - " + sObjectGUID + "." + sExtension;
-
-                    //SysUtils.ReportInfoToEventLog("Nombre de archivo exportado: " + sFileNameConcatenado);
-
-                    // Directorio completo del documento
-                    string sNewFilePath = Path.Combine(sFilePathByRFC, sFileNameConcatenado);
-
-                    // Copiar el documento en el nuevo directorio
-                    File.Copy(sFilePath, sNewFilePath);
-
-
-                    if (File.Exists(sNewFilePath))
+                    else if (iIdTipoProveedor == 2) // Persona Moral
                     {
-                        // Documento Procesado con exito
-                        iEstadoProcesamiento = 1;
+                        sDirectorioChronoscan = Configuration.ConfiguracionExportacionAChronoscan.DirectorioPersonaMoral;
                     }
                     else
                     {
-                        // No Procesado o Termino en Error
-                        iEstadoProcesamiento = 2;
+                        string sMensajeError = "No fue posible determinar el tipo de persona del proveedor: " + oObjVerExProveedor[0].Title;
+
+                        SysUtils.ReportErrorToEventLog(sMensajeError);
+                        throw new Exception(sMensajeError);
                     }
 
-                    // Actualizacion de estado de procesamiento
-                    var oLookup = new Lookup();
-                    var oObjID = new ObjID();
-
-                    oObjID.SetIDs
-                    (
-                        ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
-                        ID: env.ObjVer.ID
-                    );
-
-                    var oPropertyValue = new PropertyValue
+                    // Validar carpeta chronoscan, si no existe se crea
+                    if (!Directory.Exists(sDirectorioChronoscan))
                     {
-                        PropertyDef = pd_EstadoProcesamiento
-                    };
+                        Directory.CreateDirectory(sDirectorioChronoscan);
+                    }
 
-                    oLookup.Item = iEstadoProcesamiento;
+                    var oObjVerEx = env.ObjVerEx;
+                    var oObjectFiles = oObjVerEx.Info.Files;
+                    IEnumerator enumerator = oObjectFiles.GetEnumerator();
 
-                    oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+                    while (enumerator.MoveNext())
+                    {
+                        ObjectFile oFile = (ObjectFile)enumerator.Current;
 
-                    env.Vault.ObjectPropertyOperations.SetProperty
-                    (
-                        ObjVer: env.ObjVer,
-                        PropertyValue: oPropertyValue
-                    );
+                        var iObjectID = env.ObjVerEx.ID; //oFile.ID;
 
-                    SysUtils.ReportInfoToEventLog("Exportacion completada. Documento: " + sFileNameConcatenado + ", Rfc: " + sRFCEmpresaValue);
-                }
+                        var sObjectGUID = oObjVerEx.Info.ObjectGUID; //oFile.FileGUID;
+
+                        //var sDocumentoGUIDValue = sObjectGUID.Substring(1, sObjectGUID.LastIndexOf("}") - 1);
+
+                        string sFilePath = SysUtils.GetTempFileName(".tmp");
+
+                        // This must be generated from the temporary path and GetTempFileName. 
+                        // It cannot contain the original file name.
+                        filesToDelete.Add(sFilePath);
+
+                        // Gets the latest version of the specified file
+                        FileVer fileVer = oFile.FileVer;
+
+                        // Download the file to a temporary location
+                        env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sFilePath);
+
+                        var sFileName = oFile.GetNameForFileSystem();
+
+                        var sDelimitador = ".";
+
+                        int iIndex = sFileName.LastIndexOf(sDelimitador);
+
+                        //var sClassNameOrTitle = sFileName.Substring(0, iIndex);
+
+                        var sExtension = sFileName.Substring(iIndex + 1);
+
+                        // Directorio por RFC
+                        string sFilePathByRFC = Path.Combine(sDirectorioChronoscan, sRFCEmpresaValue);
+
+                        // Se crea el directorio por RFC si aun no existe 
+                        if (!Directory.Exists(sFilePathByRFC))
+                        {
+                            Directory.CreateDirectory(sFilePathByRFC);
+                        }
+
+                        // Nombre concatenado para el archivo
+                        var sFileNameConcatenado = iObjectID + " - " + sObjectGUID + "." + sExtension;
+
+                        //SysUtils.ReportInfoToEventLog("Nombre de archivo exportado: " + sFileNameConcatenado);
+
+                        // Directorio completo del documento
+                        string sNewFilePath = Path.Combine(sFilePathByRFC, sFileNameConcatenado);
+
+                        // Copiar el documento en el nuevo directorio
+                        File.Copy(sFilePath, sNewFilePath);
+
+
+                        if (File.Exists(sNewFilePath))
+                        {
+                            // Documento Procesado con exito
+                            iEstadoProcesamiento = 1;
+                        }
+                        else
+                        {
+                            // No Procesado o Termino en Error
+                            iEstadoProcesamiento = 2;
+                        }
+
+                        // Actualizacion de estado del workflow
+                        var oWorkflowState = new ObjectVersionWorkflowState();
+                        var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                        oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                        oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                        env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
+
+                        // Actualizacion de estado de procesamiento
+                        var oLookup = new Lookup();
+                        var oObjID = new ObjID();
+
+                        oObjID.SetIDs
+                        (
+                            ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                            ID: env.ObjVer.ID
+                        );
+
+                        var oPropertyValue = new PropertyValue
+                        {
+                            PropertyDef = pd_EstadoProcesamiento
+                        };
+
+                        oLookup.Item = iEstadoProcesamiento;
+
+                        oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                        env.Vault.ObjectPropertyOperations.SetProperty
+                        (
+                            ObjVer: env.ObjVer,
+                            PropertyValue: oPropertyValue
+                        );
+
+                        SysUtils.ReportInfoToEventLog("Exportacion completada. Documento: " + sFileNameConcatenado + ", Rfc: " + sRFCEmpresaValue);
+                    }
+                }                
             }
             catch (Exception ex)
             {
-                SysUtils.ReportErrorMessageToEventLog("Error al exportar el documento, ", ex);
+                SysUtils.ReportErrorToEventLog("Error al exportar el documento, ", ex);
             }
             finally
             {
@@ -2085,6 +2356,51 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
 
             return oTypedValue;
+        }
+
+        private void CreateNewObjectCreacionMasivaDeProveedores(EnvironmentBase env, string sFilePath)
+        {
+            var cl_CreacionMasivaDeProveedores = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.CreacionMasivaDeProveedores");
+            //var pd_CrearListaProveedores = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.CrearListadoDeProveedores");
+
+            string sFileName = Path.GetFileNameWithoutExtension(sFilePath);
+
+            var createBuilder = new MFPropertyValuesBuilder(env.Vault);
+            createBuilder.SetClass(cl_CreacionMasivaDeProveedores); // Clase issue
+            createBuilder.Add
+            (
+                (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle,
+                MFDataType.MFDatatypeText,
+                sFileName // Name or title
+            );
+            //createBuilder.Add(pd_CrearListaProveedores, MFDataType.MFDatatypeBoolean, false);
+
+            var oSourceObjetctFiles = new SourceObjectFiles();
+
+            var oObjFile = new SourceObjectFile
+            {
+                SourceFilePath = sFilePath,
+                Title = sFileName,
+                Extension = "xls"
+            };
+            oSourceObjetctFiles.Add(-1, oObjFile);
+
+            var objectTypeID = (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument;
+
+            // Validate if the document is single-file or multi-file
+            var isSingleFileDocument =
+                objectTypeID == (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument &&
+                oSourceObjetctFiles.Count == 1;
+
+            // Create the new object and check it in.
+            var objectVersion = env.Vault.ObjectOperations.CreateNewObjectEx
+            (
+                objectTypeID,
+                createBuilder.Values,
+                oSourceObjetctFiles,
+                SFD: isSingleFileDocument,
+                CheckIn: true
+            );
         }
 
         private void UpdateEstatusDeFirmaFlujoExcepcionesProveedor(EnvironmentBase env)
@@ -2379,7 +2695,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             string sTipoProveedor, 
             string sTipoValidacionChecklist, 
             string sTipoPersona, 
-            double sFechaInicioProveedor)
+            DateTime dtFechaInicioProveedor)
         {
             bool bResult = false;
             int iNuevaClaseAEstablecer = 0;
@@ -2458,8 +2774,8 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             else
                 iValidacionServiciosEspecializados = 3; // Por Empresa Interna 
 
-            // Conversion de fecha de inicio del proveedor
-            DateTime dtFechaInicio = DateTime.FromOADate(sFechaInicioProveedor);
+            //// Conversion de fecha de inicio del proveedor
+            //DateTime dtFechaInicio = DateTime.FromOADate(sFechaInicioProveedor);
 
             // Buscar Rfc en Proveedor
             var searchBuilderRfcProveedor = new MFSearchBuilder(env.Vault);
@@ -2558,7 +2874,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     {
                         PropertyDef = pd_FechaInicio
                     };
-                    propValFechaInicio.TypedValue.SetValue(MFDataType.MFDatatypeDate, dtFechaInicio);
+                    propValFechaInicio.TypedValue.SetValue(MFDataType.MFDatatypeDate, dtFechaInicioProveedor); //dtFechaInicio
                     oPropertyValues.Add(-1, propValFechaInicio);
 
                     var propValCrearHub = new PropertyValue
@@ -2602,8 +2918,30 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 }
                 else
                 {
-                    // Actualizar con SetProperty solo el nombre del proveedor asociado a Rfc Empresa
+                    oObjID.SetIDs
+                    (
+                        ObjType: ot_Proveedor,
+                        ID: oObjVerProveedor.ObjVer.ID
+                    );
 
+                    var checkedOutObjectVersion = env.Vault.ObjectOperations.CheckOut(oObjID);
+
+                    // Actualizar el nombre del proveedor asociado a Rfc Empresa
+                    var propValNombreProveedor = new PropertyValue
+                    {
+                        PropertyDef = (int)MFBuiltInPropertyDef.MFBuiltInPropertyDefNameOrTitle
+                    };
+                    propValNombreProveedor.TypedValue.SetValue(MFDataType.MFDatatypeText, sNombreProveedor); // Nombre o titulo
+
+                    env.Vault.ObjectPropertyOperations.SetProperty
+                    (
+                        ObjVer: checkedOutObjectVersion.ObjVer,
+                        PropertyValue: propValNombreProveedor
+                    );
+
+                    env.Vault.ObjectOperations.CheckIn(checkedOutObjectVersion.ObjVer);
+
+                    bResult = true;
                 }
             }
             else
@@ -2623,7 +2961,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 createBuilder.Add(pd_HubshareTemplate, MFDataType.MFDatatypeMultiSelectLookup, oLookups);
                 createBuilder.Add(pd_ValidacionServiciosEspecializados, MFDataType.MFDatatypeLookup, iValidacionServiciosEspecializados);
                 createBuilder.Add(pd_TipoProveedor, MFDataType.MFDatatypeLookup, iTipoProveedor);
-                createBuilder.Add(pd_FechaInicio, MFDataType.MFDatatypeDate, dtFechaInicio);
+                createBuilder.Add(pd_FechaInicio, MFDataType.MFDatatypeDate, dtFechaInicioProveedor); //dtFechaInicio
 
                 // Tipo de objeto a crear
                 var objectTypeId = ot_Proveedor;
@@ -2847,9 +3185,6 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
         private void CreateRfcObject(EnvironmentBase env, int iObjecto, int iClase, int iPropertyDef, string sRfc, string sNombreOTitulo)
         {
-            var wf_ValidacionesDocumentoProveedor = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidacionesDocumentoProveedor");
-            var wfs_DocumentoVigente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesDocumentoProveedor.DocumentoVigente");
-
             var createBuilder = new MFPropertyValuesBuilder(env.Vault);
             createBuilder.SetClass(iClase); // Clase
             createBuilder.Add
@@ -2859,7 +3194,6 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 sNombreOTitulo // Name or title
             );
             createBuilder.Add(iPropertyDef, MFDataType.MFDatatypeText, sRfc); // Rfc
-            createBuilder.SetWorkflowState(wf_ValidacionesDocumentoProveedor, wfs_DocumentoVigente); // Workflow
 
             // Tipo de objeto a crear
             var objectTypeId = iObjecto; // Tipo de objeto
