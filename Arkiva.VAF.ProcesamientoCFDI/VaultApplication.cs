@@ -2,9 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Xml;
@@ -26,10 +29,34 @@ namespace Arkiva.VAF.ProcesamientoCFDI
     public class VaultApplication
         : ConfigurableVaultApplicationBase<Configuration>
     {
+        CultureInfo defaultCulture;
+
+        protected override void StartApplication()
+        {
+            base.StartApplication();
+        }
+
+        public override void StartOperations(Vault vaultPersistent)
+        {
+            base.StartOperations(vaultPersistent);
+
+            string idioma = Configuration.Idioma;
+            defaultCulture = new CultureInfo(idioma); // set the desired culture here
+
+            // you can also know the Client culture from env.CurrentUserSessionInfo.ClientCulture
+
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+        }
+
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaMasivaDeCfdi")]
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaDeCfdi")]
         public void ProcesarMetadataCFDIYCrearClaseCFDINomina(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var filesToDelete = new List<string>();
 
             var wf_FlujoValidaciones = env.Vault
@@ -288,6 +315,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "Arkiva.Class.CFDIComprobanteRecibido")]
         public void ProcesosComprobantesCFDI(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             int iOrigenCFDICompulsa = 0;
             bool bIssue = false;
             string sRfcEmisorValue = "";
@@ -789,6 +820,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.Contrato")]
         public void ProcesosOrdenesDeCompra(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
             var cl_OrdenCompraRecibidaCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraRecibidaCliente");
             var cl_FacturaRecibidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.FacturaRecibidaProveedor");
@@ -888,6 +923,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.EntregableEmitidoCliente")]
         public void ProcesosDocumentoEntregable(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var cl_OrdenCompraEmitidaProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraEmitidaProveedor");
             var cl_OrdenCompraRecibidaCliente = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.OrdenDeCompraRecibidaCliente");
             var cl_EntregableRecibidoProveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.EntregableRecibidoProveedor");
@@ -1001,10 +1040,15 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         //        SetPropertiesGenerico(env, cl_Contrato, pd_EmpresaInterna, pd_ContratosRelacionados, oLookupsEmpresaInterna, false);
         //    }           
         //}       
-                                
+
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
         public void Asignar_Workflow_CreacionMasivaProveedores(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var workflow = PermanentVault
                 .WorkflowOperations
                 .GetWorkflowIDByAlias("WF.CargaMasivaDeProveedores");
@@ -1058,6 +1102,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [StateAction("WFS.CargaMasivaDeProveedores.Procesar", Class = "CL.CreacionMasivaDeProceedoresServiciosEspecializados")]
         public void Procesar_CreacionMasivaProveedores(StateEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             // Archivos que se deberan limpiar al final del proceso
             var filesToDelete = new List<string>();
 
@@ -1080,7 +1128,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
                         env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
 
-                        string sNewPathTempFile = @"C:\temp\CargaMasivaProveedores\temp\tempFileCopy.xls";
+                        string sNewPathTempFile = @"C:\temp\CargaMasivaProveedores\temp\tempFileCopy.xlsx";
                         filesToDelete.Add(sNewPathTempFile);
 
                         File.Copy(sPathTempFile, sNewPathTempFile, true);
@@ -1109,6 +1157,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterCreateNewObjectFinalize, Class = "CL.CreacionMasivaDeProveedores")]
         public void EventHandler_CreacionMasivaProveedores(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             bool bProcesoExitoso = false;
             string sPathExcelFile = "";
 
@@ -1437,15 +1489,15 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         // Descargar el excel como un archivo temporal
                         ObjectFile oFile = (ObjectFile)enumerator.Current;
                         string sPathTempFile = SysUtils.GetTempFileName(".tmp");
-                        //filesToDelete.Add(sPathTempFile);
+                        filesToDelete.Add(sPathTempFile);
                         FileVer fileVer = oFile.FileVer;
 
                         env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
 
                         SysUtils.ReportInfoToEventLog("Ruta de descarga del archivo temporal: " + sPathTempFile);
 
-                        Application oExcelFile = new Application();
-                        Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
+                        //Application oExcelFile = new Application();
+                        //Workbook wb = oExcelFile.Workbooks.Open(sPathTempFile);
 
                         SLDocument slExcel = new SLDocument(sPathTempFile);
 
@@ -1477,7 +1529,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                         // Proveedores
                         slExcel.SelectWorksheet("Sheet1");
 
-                        int iRowSheet1 = 2;
+                        int iRowSheet1 = 3;
 
                         while (!string.IsNullOrEmpty(slExcel.GetCellValueAsString(iRowSheet1, 1)))
                         {
@@ -1681,6 +1733,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.Contrato")]
         public void ProcesosDocumentosAdministrativos(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var wf_ValidacionesChecklist = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidcionesRepse");
             var wfs_DocumentoPorTraducir = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesChecklist.DocumentoPorTraducir");
             var wf_CicloVidaContrato = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("MF.WF.ContractLifecycle");
@@ -1914,6 +1970,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges, Class = "CL.ProveedorTransportista")]
         public void ProcesosProveedores(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
             var pd_Severidad = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Severity");
             var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
@@ -1955,6 +2015,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [StateAction("WFS.FlujoDeExcepcionesProveedor.Firmado")]
         public void FlujoDeExcepcionesProveedor_Firmado(StateEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var wf_CicloVidaContrato = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("MF.WF.ContractLifecycle");
             var wfs_PresentacionPendiente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("M-Files.CLM.State.ContractLifecycle.PendingSubmission");
             var wf_ValidacionesChecklist = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidcionesRepse");
@@ -2029,6 +2093,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [StateAction("WFS.FlujoDeExcepcionesProveedor.Rechazado")]
         public void FlujoDeExcepcionesProveedor_Rechazado(StateEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var ot_Proveedor = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("OT.Proveedor");
             var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
             var pd_EstatusFlujoExcepciones = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusFlujoDeExcepciones");
@@ -2073,6 +2141,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaSinClasificar")]
         public void Asignar_Workflow_CargaMasivaSinClasificar(EventHandlerEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var workflow = PermanentVault
                 .WorkflowOperations
                 .GetWorkflowIDByAlias("WF.ValidacionesDocumentosChronoscan");
@@ -2144,6 +2216,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [StateAction("WFS.ValidacionesDocumentosChronoscan.EnviarAChronoscan", Class = "CL.CargaMasivaSinClasificar")]
         public void EnviarAChronoscan_DocumentosCargaMasivaSinClasificar(StateEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var workflow = PermanentVault
                 .WorkflowOperations
                 .GetWorkflowIDByAlias("WF.ValidacionesDocumentosChronoscan");
@@ -2323,9 +2399,336 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
         }
 
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaDocumentoSua")]
+        //[EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaDocumentoSua")]
+        public void Asignar_Workflow_CargaDocumentoSUA(EventHandlerEnvironment env)
+        {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
+            var workflow = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowIDByAlias("WF.CargaMasivaDeProveedores");
+
+            var estado = PermanentVault
+                .WorkflowOperations
+                .GetWorkflowStateIDByAlias("WFS.CargaMasivaDeProveedores.Inicio");
+
+            var pd_EstadoProcesamiento = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstadoDeProcesamiento");
+
+            try
+            {
+                var oWorkflowState = new ObjectVersionWorkflowState();
+                var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVerEx.ObjID, true);
+
+                oWorkflowState.Workflow.TypedValue.SetValue(MFDataType.MFDatatypeLookup, workflow);
+                oWorkflowState.State.TypedValue.SetValue(MFDataType.MFDatatypeLookup, estado);
+                env.Vault.ObjectPropertyOperations.SetWorkflowStateEx(oObjVer, oWorkflowState);
+
+                // Actualizacion de estado de procesamiento
+                var oLookup = new Lookup();
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_EstadoProcesamiento
+                };
+
+                oLookup.Item = 3;
+
+                oPropertyValue.TypedValue.SetValueToLookup(oLookup);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+            }
+            catch(Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Ocurrio un error al asignar workflow en Carga Documento SUA.", ex);
+            }
+        }
+
+        [StateAction("WFS.CargaMasivaDeProveedores.Procesar", Class = "CL.CargaDocumentoSua")]
+        public void Procesar_CargaDocumentoSUA(StateEnvironment env)
+        {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;            
+
+            // Archivos que se deberan limpiar al final del proceso
+            var filesToDelete = new List<string>();
+
+            try
+            {
+                if (env.ObjVerEx.IsEnteringState)
+                {
+                    var oObjVerEx = env.ObjVerEx;
+                    var oObjectFiles = oObjVerEx.Info.Files;
+                    IEnumerator enumerator = oObjectFiles.GetEnumerator();
+
+                    while (enumerator.MoveNext())
+                    {
+                        // Descargar el archivo temporal
+                        ObjectFile oFile = (ObjectFile)enumerator.Current;
+                        string sPathTempFile = SysUtils.GetTempFileName(".tmp");
+                        filesToDelete.Add(sPathTempFile);
+                        FileVer fileVer = oFile.FileVer;
+                        env.Vault.ObjectFileOperations.DownloadFile(oFile.ID, fileVer.Version, sPathTempFile);
+
+                        SLDocument slExcelDocument = new SLDocument(sPathTempFile);                                                                       
+
+                        slExcelDocument.SelectWorksheet("Datos Validación"); // Datos de la empresa
+
+                        int iRowDatosValidacion = 3;
+
+                        while (!string.IsNullOrEmpty(slExcelDocument.GetCellValueAsString(iRowDatosValidacion, 1)))
+                        {
+                            string registroPatronal = slExcelDocument.GetCellValueAsString(iRowDatosValidacion, 1);
+                            string rfcPatron = slExcelDocument.GetCellValueAsString(iRowDatosValidacion, 2);
+                            string periodo = slExcelDocument.GetCellValueAsString(iRowDatosValidacion, 3);
+                            string folio = slExcelDocument.GetCellValueAsString(iRowDatosValidacion, 4);
+                            DateTime fechaLimitePago = slExcelDocument.GetCellValueAsDateTime(iRowDatosValidacion, 7);
+
+                            slExcelDocument.SelectWorksheet("Datos Trabajador"); // Datos del empleado
+
+                            int iRowDatosTrabajador = 3;
+
+                            while (!string.IsNullOrEmpty(slExcelDocument.GetCellValueAsString(iRowDatosTrabajador, 1)))
+                            {
+                                string rfcEmpleado = slExcelDocument.GetCellValueAsString(iRowDatosTrabajador, 2);
+                                string curp = slExcelDocument.GetCellValueAsString(iRowDatosTrabajador, 3);
+                                string nombreEmpleado = slExcelDocument.GetCellValueAsString(iRowDatosTrabajador, 7);
+
+                                var salarioBaseCotizacion = GetSalarioBaseCotizacionValue(env, rfcEmpleado);
+                                double dSalarioBaseCotizacion = Convert.ToDouble(salarioBaseCotizacion);
+
+                                if (string.IsNullOrEmpty(curp))
+                                {
+                                    curp = GetCurpValue(env, rfcEmpleado);
+                                }
+
+                                if (CreateEmpleado(env, registroPatronal, rfcPatron, periodo, folio, fechaLimitePago, rfcEmpleado, curp, nombreEmpleado, dSalarioBaseCotizacion) == true)
+                                {
+                                    SysUtils.ReportInfoToEventLog("Proceso terminado exitosamente");
+                                }
+
+                                iRowDatosTrabajador++;
+                            }
+
+                            iRowDatosValidacion++;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Error al intentar procesar el documento SUA.", ex);
+            }
+            finally
+            {
+                foreach (var sFile in filesToDelete)
+                {
+                    File.Delete(sFile);
+                }
+            }
+        }
+
+        private bool CreateEmpleado(EnvironmentBase env, 
+            string registroPatronal, 
+            string rfcPatron, 
+            string periodo, 
+            string folio, 
+            DateTime fechaLimitePago, 
+            string rfcEmpleado, 
+            string curp, 
+            string nombreEmpleado, 
+            double salarioBaseCotizacion)
+        {
+            bool bResult = false;
+
+            var ot_Empleado = env.Vault.ObjectTypeOperations.GetObjectTypeIDByAlias("MF.OT.Employee");
+            var cl_Empleado = env.Vault.ClassOperations.GetObjectClassIDByAlias("MF.CL.Employee");
+            var pd_RegistroPatronal = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RegistroPatronal");
+            var pd_RfcPatron = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.RfcEmpresa");
+            var pd_Periodo = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Periodo");
+            var pd_Folio = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.FolioSua");
+            var pd_FechaLimitePago = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.FechaLmiteDePago");
+            var pd_RfcEmpleado = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Rfc");
+            var pd_Curp = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Curp");
+            var pd_DisplayName = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.DisplayName");
+            var pd_Nombres = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.FirstName");
+            var pd_ApellidoPaterno = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.LastName.Paterno");
+            var pd_ApellidoMaterno = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.ApellidoMaterno");
+            var pd_SalarioBaseCotizacion = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.SalarioBaseCotApor.Texto");
+
+            var searchBuilderEmpleado = new MFSearchBuilder(env.Vault);
+            searchBuilderEmpleado.Deleted(false);
+            searchBuilderEmpleado.Class(cl_Empleado);
+            searchBuilderEmpleado.Property(pd_RfcEmpleado, MFDataType.MFDatatypeText, rfcEmpleado);
+
+            var searchResults = searchBuilderEmpleado.FindEx();
+
+            if (searchResults.Count == 0) // Crear si el empleado aun no existe
+            {
+                string delimitador = "$";
+
+                int firstIndex = nombreEmpleado.IndexOf(delimitador);
+                int lastIndex = nombreEmpleado.LastIndexOf(delimitador);
+
+                string nombres = nombreEmpleado.Substring(lastIndex + 1).Trim();
+                string apellidoP = nombreEmpleado.Substring(0, firstIndex);
+                string apellidoM = nombreEmpleado.Substring(firstIndex + 1, ((lastIndex - 1) - (firstIndex + 1)) + 1);
+
+                string displayName = nombreEmpleado.Replace("$", " ");
+
+                var createBuilderEmpleado = new MFPropertyValuesBuilder(env.Vault);
+                createBuilderEmpleado.SetClass(cl_Empleado);
+                createBuilderEmpleado.Add(pd_RegistroPatronal, MFDataType.MFDatatypeText, registroPatronal);
+                createBuilderEmpleado.Add(pd_RfcPatron, MFDataType.MFDatatypeText, rfcPatron);
+                createBuilderEmpleado.Add(pd_Periodo, MFDataType.MFDatatypeText, periodo);
+                createBuilderEmpleado.Add(pd_Folio, MFDataType.MFDatatypeText, folio);
+                createBuilderEmpleado.Add(pd_FechaLimitePago, MFDataType.MFDatatypeDate, fechaLimitePago);
+                createBuilderEmpleado.Add(pd_RfcEmpleado, MFDataType.MFDatatypeText, rfcEmpleado);
+                createBuilderEmpleado.Add(pd_Curp, MFDataType.MFDatatypeText, curp);
+                createBuilderEmpleado.Add(pd_DisplayName, MFDataType.MFDatatypeText, displayName);
+                createBuilderEmpleado.Add(pd_Nombres, MFDataType.MFDatatypeText, nombres);
+                createBuilderEmpleado.Add(pd_ApellidoPaterno, MFDataType.MFDatatypeText, apellidoP);
+                createBuilderEmpleado.Add(pd_ApellidoMaterno, MFDataType.MFDatatypeText, apellidoM);
+                createBuilderEmpleado.Add(pd_SalarioBaseCotizacion, MFDataType.MFDatatypeFloating, salarioBaseCotizacion);
+
+                var objectTypeID = ot_Empleado;
+                
+                var sourceFiles = new SourceObjectFiles();
+
+                var isSingleFileDocument =
+                    objectTypeID == (int)MFBuiltInObjectType.MFBuiltInObjectTypeDocument &&
+                    sourceFiles.Count == 1;
+
+                env.Vault.ObjectOperations.CreateNewObjectEx
+                (
+                    objectTypeID,
+                    createBuilderEmpleado.Values,
+                    sourceFiles,
+                    SFD: isSingleFileDocument,
+                    CheckIn: true
+                );
+
+                bResult = true;
+            }
+            else // Actualizar si el empleado ya existe 
+            {
+                var oObjID = new ObjID();
+
+                oObjID.SetIDs
+                (
+                    ObjType: ot_Empleado,
+                    ID: env.ObjVer.ID
+                );
+
+                var oPropertyValue = new PropertyValue
+                {
+                    PropertyDef = pd_SalarioBaseCotizacion
+                };
+
+                oPropertyValue.TypedValue.SetValue(MFDataType.MFDatatypeFloating, salarioBaseCotizacion);
+
+                env.Vault.ObjectPropertyOperations.SetProperty
+                (
+                    ObjVer: env.ObjVer,
+                    PropertyValue: oPropertyValue
+                );
+            }
+
+            return bResult;
+        }
+
+        private string GetCurpValue(EnvironmentBase env, string sRfcVal)
+        {
+            string sResult = "";
+
+            var cl_CfdiNomina = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.CfdiNomina");
+            var pd_Rfc = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Rfc");
+            var pd_Curp = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Curp");
+
+            // Buscar los CFDI Nomina del Empleado
+            var searchBuilderCFDINomina = new MFSearchBuilder(env.Vault);
+            searchBuilderCFDINomina.Deleted(false);
+            searchBuilderCFDINomina.Class(cl_CfdiNomina);
+            searchBuilderCFDINomina.Property(pd_Rfc, MFDataType.MFDatatypeText, sRfcVal);
+
+            var searchResultsCFDINomina = searchBuilderCFDINomina.FindEx();
+
+            foreach (var cfdiNomina in searchResultsCFDINomina)
+            {
+                var oPropertyValues = cfdiNomina.Properties;
+                var sCurp = oPropertyValues.SearchForPropertyEx(pd_Curp, true).TypedValue.GetValueAsLocalizedText();
+
+                if (!string.IsNullOrEmpty(sCurp))
+                {
+                    sResult = sCurp;
+                    break;
+                }               
+            }
+
+            return sResult;
+        }
+
+        private object GetSalarioBaseCotizacionValue(EnvironmentBase env, string sRfcVal)
+        {
+            var listCFDINomina = new List<(int iDias, object oSalarioBaseCotizacion)>();
+            var cl_CfdiNomina = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.CfdiNomina");
+            var pd_Rfc = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Rfc");
+            var pd_FechaPago = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.FechaPago.Texto");
+            var pd_SalarioBaseCotizacion = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.SalarioBaseCotApor.Texto");
+
+            // Buscar los CFDI Nomina del Empleado
+            var searchBuilderCFDINomina = new MFSearchBuilder(env.Vault);
+            searchBuilderCFDINomina.Deleted(false);
+            searchBuilderCFDINomina.Class(cl_CfdiNomina);
+            searchBuilderCFDINomina.Property(pd_Rfc, MFDataType.MFDatatypeText, sRfcVal);
+
+            var searchResultsCFDINomina = searchBuilderCFDINomina.FindEx();
+
+            foreach (var cfdiNomina in searchResultsCFDINomina)
+            {
+                var oPropertyValues = cfdiNomina.Properties;
+                var oFechaPago = oPropertyValues.SearchForPropertyEx(pd_FechaPago, true).TypedValue.Value;
+                var oSalarioBaseCotizacion = oPropertyValues.SearchForPropertyEx(pd_SalarioBaseCotizacion, true).TypedValue.Value;
+
+                DateTime dtFechaPago = Convert.ToDateTime(oFechaPago);
+                DateTime dtFechaActual = DateTime.Today;
+
+                TimeSpan tsDifFechas = dtFechaActual - dtFechaPago;
+                int iDias = tsDifFechas.Days;
+
+                listCFDINomina.Add((iDias, oSalarioBaseCotizacion));
+            }
+
+            var eDias = listCFDINomina.Min().iDias;
+
+            var indexElement = listCFDINomina.FindIndex(a => a.iDias.Equals(eDias));
+
+            var oResult = listCFDINomina[indexElement].oSalarioBaseCotizacion;
+
+            return oResult;
+        }
+
         [PropertyCustomValue("PD.HubGuid")]
         public TypedValue CalculatingHubGuidValue(PropertyEnvironment env)
         {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
             var pd_Hubsharelink = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Hubsharelink");
             var pd_HubGUID = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.HubGuid");
 
@@ -2381,7 +2784,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             {
                 SourceFilePath = sFilePath,
                 Title = sFileName,
-                Extension = "xls"
+                Extension = "xlsx"
             };
             oSourceObjetctFiles.Add(-1, oObjFile);
 
@@ -3185,6 +3588,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
 
         private void CreateRfcObject(EnvironmentBase env, int iObjecto, int iClase, int iPropertyDef, string sRfc, string sNombreOTitulo)
         {
+            var wf_ValidacionesDocumentoProveedor = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.ValidacionesDocumentoProveedor");
+            var wfs_DocumentoVigente = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.ValidacionesDocumentoProveedor.DocumentoVigente");
+            var pd_EjecutivoCumplimiento = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EjecutivoDeCumplimiento");
+
             var createBuilder = new MFPropertyValuesBuilder(env.Vault);
             createBuilder.SetClass(iClase); // Clase
             createBuilder.Add
@@ -3194,6 +3601,11 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 sNombreOTitulo // Name or title
             );
             createBuilder.Add(iPropertyDef, MFDataType.MFDatatypeText, sRfc); // Rfc
+            createBuilder.SetWorkflowState(wf_ValidacionesDocumentoProveedor, wfs_DocumentoVigente); // Workflow
+
+            // Si es proveedor, agregar el ejecutivo de cumplimiento
+            if (iObjecto == 212)
+                createBuilder.Add(pd_EjecutivoCumplimiento, MFDataType.MFDatatypeLookup, 1);
 
             // Tipo de objeto a crear
             var objectTypeId = iObjecto; // Tipo de objeto
@@ -3355,6 +3767,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             var pd_FechaFinalPago = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.FechaFinalPago.Texto");
             var pd_PeriodicidadPago = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.PeriodicidadPago.Texto");
             var pd_SalarioIntegrado = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.SalarioDiarioIntegrado.Texto");
+            var pd_SalarioBaseCotizacion = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.SalarioBaseCotApor.Texto");
             var pd_TotalOtrosPagos = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.TotalOtrosPagos.Texto");
             var pd_TotalDeducciones = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.TotalDeducciones.Texto");
             var pd_Norma = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("CFDI.Norma.Texto");
@@ -3383,6 +3796,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             string sFechaPagoFinal = "";
             string sPeriodicidadPago = "";
             string sSalarioIntegrado = "";
+            string sSalarioBaseCotizacion = "";
             string sTotalOtrosPagos = "";
             string sTotalDeducciones = "";
             //string sNorma = "";
@@ -3492,6 +3906,11 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                     {
                         sSalarioIntegrado = atributo.Attributes["SalarioDiarioIntegrado"].Value;
                     }
+
+                    if (atributo.HasAttribute("SalarioBaseCotApor"))
+                    {
+                        sSalarioBaseCotizacion = atributo.Attributes["SalarioBaseCotApor"].Value;
+                    }
                 }
 
                 XmlNodeList oNodoNominaDeduccion = oDocumento
@@ -3562,6 +3981,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 builderCreateDocumento.Add(pd_FechaFinalPago, MFDataType.MFDatatypeDate, sFechaPagoFinal);
                 builderCreateDocumento.Add(pd_PeriodicidadPago, MFDataType.MFDatatypeText, sPeriodicidadPago);
                 builderCreateDocumento.Add(pd_SalarioIntegrado, MFDataType.MFDatatypeFloating, sSalarioIntegrado);
+                builderCreateDocumento.Add(pd_SalarioBaseCotizacion, MFDataType.MFDatatypeFloating, sSalarioBaseCotizacion);
                 builderCreateDocumento.Add(pd_TotalOtrosPagos, MFDataType.MFDatatypeFloating, sTotalOtrosPagos);
                 builderCreateDocumento.Add(pd_TotalDeducciones, MFDataType.MFDatatypeFloating, sTotalDeducciones);
                 //builderCreateDocumento.Add(pd_Proveedor, MFDataType.MFDatatypeMultiSelectLookup, sProveedorValue);
@@ -3569,6 +3989,8 @@ namespace Arkiva.VAF.ProcesamientoCFDI
                 builderCreateDocumento.Add(pd_ImporteNomina, MFDataType.MFDatatypeText, sImporteNomina);
                 builderCreateDocumento.Add(pd_DeduccionIMSS, MFDataType.MFDatatypeText, sImporteDeduccionIMSS);
                 builderCreateDocumento.Add(pd_DeduccionISR, MFDataType.MFDatatypeText, sImporteDeduccionISR);
+                builderCreateDocumento.Add(pd_RfcEmpleado, MFDataType.MFDatatypeText, sRfcReceptor);
+                builderCreateDocumento.Add(pd_Curp, MFDataType.MFDatatypeText, sCurp);
 
                 if (searchResults.Count > 0)
                 {

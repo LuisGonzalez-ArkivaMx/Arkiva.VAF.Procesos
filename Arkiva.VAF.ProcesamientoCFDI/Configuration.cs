@@ -22,6 +22,10 @@ namespace Arkiva.VAF.ProcesamientoCFDI
         [DataMember]
         [JsonConfEditor(HelpText = "Configuracion Exportacion a Chronoscan", Label = "Configuracion Exportacion a Chronoscan", IsRequired = true)]
         public ConfiguracionExportacionAChronoscan ConfiguracionExportacionAChronoscan { get; set; }
+
+        [DataMember]
+        [JsonConfEditor(Label = "Idioma", TypeEditor = "options", Options = "{selectOptions:[\"es-MX\",\"en-US\"]}", DefaultValue = "es-MX")]
+        public string Idioma = "es-MX";
     }
 
     [DataContract]
