@@ -50,6 +50,45 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             Thread.CurrentThread.CurrentUICulture = defaultCulture;
         }
 
+        [PropertyCustomValue("PD.HubGuid")]
+        public TypedValue CalculatingHubGuidValue(PropertyEnvironment env)
+        {
+            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
+            Thread.CurrentThread.CurrentUICulture = defaultCulture;
+
+            var pd_Hubsharelink = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Hubsharelink");
+            var pd_HubGUID = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.HubGuid");
+
+            var oPropertyValues = new PropertyValues();
+            var oTypedValue = new TypedValue();
+
+            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
+
+            if (oPropertyValues.IndexOf(pd_Hubsharelink) != -1)
+            {
+                var HubsharelinkValue = oPropertyValues
+                    .SearchForPropertyEx(pd_Hubsharelink, true)
+                    .TypedValue
+                    .GetValueAsLocalizedText();
+
+                // https://demo-usa.hubshare.com/#/Hub/29670d45-9172-4d95-955c-21d2f285e53c
+
+                var delimitador = "/";
+
+                int index = HubsharelinkValue.LastIndexOf(delimitador);
+
+                var HubGuidValue = HubsharelinkValue.Substring(index + 1);
+
+                if (oPropertyValues.IndexOf(pd_HubGUID) != -1)
+                {
+                    oTypedValue.SetValue(MFDataType.MFDatatypeText, HubGuidValue);
+                }
+            }
+
+            return oTypedValue;
+        }
+
         [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCreateNewObjectFinalize, Class = "CL.CargaMasivaDeCfdi")]
         [EventHandler(MFEventHandlerType.MFEventHandlerAfterFileUpload, Class = "CL.CargaMasivaDeCfdi")]
         public void ProcesarMetadataCFDIYCrearClaseCFDINomina(EventHandlerEnvironment env)
@@ -2586,6 +2625,144 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             }
         }
 
+        [EventHandler(MFEventHandlerType.MFEventHandlerBeforeCheckInChanges)]
+        private void RemoveIssueResueltoOCancelado(EventHandlerEnvironment env)
+        {            
+            var wf_IssuesProcessingServiciosEspecializados = env.Vault.WorkflowOperations.GetWorkflowIDByAlias("WF.IssueProcessingServiciosEspecializados");
+            var wfs_Resuelto = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.IssueProcessingServiciosEspecializados.Resuelto");
+            var wfs_Descartado = env.Vault.WorkflowOperations.GetWorkflowStateIDByAlias("WFS.IssueProcessingServiciosEspecializados.Descartado");
+            var cl_Proveedor = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.Proveedor");
+            var cl_ProveedorServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.ProveedorDeServicioEspecializado");
+            var cl_IssueServicioEspecializado = env.Vault.ClassOperations.GetObjectClassIDByAlias("CL.IssueServiciosEspecializados");
+            var pd_Proveedor = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("MF.PD.Proveedor");
+            var pd_IssuesAbiertos = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.IssuesAbiertos");
+            var pd_EstatusIssue = env.Vault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.EstatusDelIssue");
+            var pd_Class = env.Vault.PropertyDefOperations.GetBuiltInPropertyDef(MFBuiltInPropertyDef.MFBuiltInPropertyDefClass);
+
+            var oPropertyValue = new PropertyValue();
+            var oLookups = new Lookups();
+            var oLookup = new Lookup();
+
+            try
+            {               
+                var oPropertyValues = env.ObjVerEx.Properties;
+
+                var iClass = oPropertyValues.SearchForPropertyEx(pd_Class.ID, true).TypedValue.GetLookupID();
+
+                if (iClass == cl_Proveedor || iClass == cl_ProveedorServicioEspecializado)
+                {
+                    var issuesAbiertos = oPropertyValues
+                    .SearchForPropertyEx(pd_IssuesAbiertos, true)
+                    .TypedValue
+                    .GetValueAsLookups()
+                    .ToObjVerExs(env.Vault);
+
+                    foreach (var issue in issuesAbiertos)
+                    {
+                        bool bRemove = false;
+
+                        var issueProperties = issue.Properties;
+
+                        var workflowIssue = issue.Workflow;
+                        var stateIssue = issue.State;
+
+                        var estatusIssue = issueProperties.SearchForPropertyEx(pd_EstatusIssue, true).TypedValue.GetLookupID();
+
+                        if (estatusIssue == 2 || estatusIssue == 3) // Si el estatus es Cancelado o Resuelto
+                        {
+                            bRemove = true;
+                        }
+
+                        if (workflowIssue == wf_IssuesProcessingServiciosEspecializados) // Si el workflow es issue processing servicios especializados
+                        {
+                            if (stateIssue == wfs_Descartado || stateIssue == wfs_Resuelto) // Si el estado es Descartado o Resuelto
+                            {
+                                bRemove = true;
+                            }
+                        }
+
+                        if (bRemove == false)
+                        {
+                            oLookup.Item = issue.ObjVer.ID;
+                            oLookups.Add(-1, oLookup);
+
+                            //var indexItem = issuesAbiertos.IndexOf(issue);
+                            //issuesAbiertos.ToLookups().Remove(indexItem);
+                            //oLookups.Remove(indexItem);
+                            //issuesAbiertos.Remove(issue);
+                        }
+                    }
+
+                    var oObjVer = env.Vault.ObjectOperations.GetLatestObjVerEx(env.ObjVer.ObjID, true);
+
+                    oPropertyValue.PropertyDef = pd_IssuesAbiertos;
+                    oPropertyValue.TypedValue.SetValueToMultiSelectLookup(oLookups);
+                    env.Vault.ObjectPropertyOperations.SetProperty(oObjVer, oPropertyValue);
+                }
+
+                if (iClass == cl_IssueServicioEspecializado)
+                {
+                    var proveedor = oPropertyValues.SearchForPropertyEx(pd_Proveedor, true).TypedValue.GetValueAsLookups().ToObjVerExs(env.Vault);
+
+                    if (proveedor.Count > 0)
+                    {
+                        var oObjVerEx = proveedor[0];
+
+                        var proveedorProperties = oObjVerEx.Properties;
+
+                        var issuesAbiertos = proveedorProperties
+                            .SearchForPropertyEx(pd_IssuesAbiertos, true)
+                            .TypedValue
+                            .GetValueAsLookups()
+                            .ToObjVerExs(env.Vault);
+
+                        foreach (var issue in issuesAbiertos)
+                        {
+                            bool bRemove = false;
+
+                            var issueProperties = issue.Properties;
+
+                            var workflowIssue = issue.Workflow;
+                            var stateIssue = issue.State;
+
+                            var estatusIssue = issueProperties.SearchForPropertyEx(pd_EstatusIssue, true).TypedValue.GetLookupID();
+
+                            if (estatusIssue == 2 || estatusIssue == 3) // Si el estatus es Cancelado o Resuelto
+                            {
+                                bRemove = true;
+                            }
+
+                            if (workflowIssue == wf_IssuesProcessingServiciosEspecializados) // Si el workflow es issue processing servicios especializados
+                            {
+                                if (stateIssue == wfs_Descartado || stateIssue == wfs_Resuelto) // Si el estado es Descartado o Resuelto
+                                {
+                                    bRemove = true;
+                                }
+                            }
+
+                            if (bRemove == false)
+                            {
+                                oLookup.Item = issue.ObjVer.ID;
+                                oLookups.Add(-1, oLookup);
+                            }
+                        }
+
+                        var oObjVer = oObjVerEx.Vault.ObjectOperations.GetLatestObjVerEx(oObjVerEx.ObjID, true);
+
+                        oPropertyValue.PropertyDef = pd_IssuesAbiertos;
+                        oPropertyValue.TypedValue.SetValueToMultiSelectLookup(oLookups);
+                        oObjVer = oObjVerEx.Vault.ObjectOperations.CheckOut(oObjVerEx.ObjID).ObjVer;
+                        oObjVerEx.Vault.ObjectPropertyOperations.SetProperty(oObjVer, oPropertyValue);
+                        oObjVerEx.Vault.ObjectOperations.CheckIn(oObjVer);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SysUtils.ReportErrorMessageToEventLog("Ocurrio un error en el evento RemoveIssueResueltoOCancelado. ", ex);
+            }
+        }
+
         private void CompareCurpSuaVsCurpNomina(EnvironmentBase env, string rfcPatron, List<string> listCurp)
         {
             bool bExists = false;
@@ -2890,46 +3067,7 @@ namespace Arkiva.VAF.ProcesamientoCFDI
             var oResult = listCFDINomina[indexElement].oCFDIPropertyValue;
 
             return oResult;
-        }
-
-        [PropertyCustomValue("PD.HubGuid")]
-        public TypedValue CalculatingHubGuidValue(PropertyEnvironment env)
-        {
-            SysUtils.ReportInfoToEventLog("Configurando Idioma: " + defaultCulture.Name);
-            Thread.CurrentThread.CurrentCulture = defaultCulture;
-            Thread.CurrentThread.CurrentUICulture = defaultCulture;
-
-            var pd_Hubsharelink = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.Hubsharelink");
-            var pd_HubGUID = PermanentVault.PropertyDefOperations.GetPropertyDefIDByAlias("PD.HubGuid");
-
-            var oPropertyValues = new PropertyValues();
-            var oTypedValue = new TypedValue();
-
-            oPropertyValues = env.Vault.ObjectPropertyOperations.GetProperties(env.ObjVer);
-
-            if (oPropertyValues.IndexOf(pd_Hubsharelink) != -1)
-            {
-                var HubsharelinkValue = oPropertyValues
-                    .SearchForPropertyEx(pd_Hubsharelink, true)
-                    .TypedValue
-                    .GetValueAsLocalizedText();
-
-                // https://demo-usa.hubshare.com/#/Hub/29670d45-9172-4d95-955c-21d2f285e53c
-
-                var delimitador = "/";
-
-                int index = HubsharelinkValue.LastIndexOf(delimitador);
-
-                var HubGuidValue = HubsharelinkValue.Substring(index + 1);
-
-                if (oPropertyValues.IndexOf(pd_HubGUID) != -1)
-                {
-                    oTypedValue.SetValue(MFDataType.MFDatatypeText, HubGuidValue);
-                }
-            }
-
-            return oTypedValue;
-        }
+        }        
 
         private void CreateNewObjectCreacionMasivaDeProveedores(EnvironmentBase env, string sFilePath)
         {
